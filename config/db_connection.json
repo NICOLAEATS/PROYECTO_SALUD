@@ -1,0 +1,8 @@
+{
+  "host": "localhost",
+  "port": "5432",
+  "user": "ivan",
+  "password": "hisproceso",
+  "database": "ivan_proceso_his",
+  "schema": "es_ivan"
+}

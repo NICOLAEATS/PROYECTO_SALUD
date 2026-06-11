@@ -1,0 +1,39 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.env
+
+# Build artifacts
+build/
+build_editor/
+build_editor_cancel/
+build_old_155804079/
+dist/
+dist_editor/
+dist_editor_cancel/
+dist.zip
+*.spec
+
+# Data and logs
+datos/
+logs/
+carga_test.err
+carga_test.log
+
+# Session files
+session-ses_*.md
+
+# IDE
+opencode.json
+
+# User config (auto-generated on first run)
+editor_buttons.json
+config/db_connection.json
+
+# System
+.DS_Store
+Thumbs.db

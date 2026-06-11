@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Monitoreo de Salud - GERESA Cusco</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar">
+  <button class="nav-btn active" data-module="bd" id="btn-nav-bd">🗄️  Configurar BD</button>
+  <button class="nav-btn" data-module="ingesta" id="btn-nav-ingesta">⚙️ Ingesta y Mantenimiento</button>
+  <button class="nav-btn" data-module="reportes" id="btn-nav-reportes">📊 Análisis y Reportes</button>
+  <button class="nav-btn" data-module="maestros" id="btn-nav-maestros">🗂️ Gestión de Maestros</button>
+  <div class="nav-spacer"></div>
+  <span class="nav-status" id="nav-status-access">⏳ Validando entorno...</span>
+  <button class="theme-toggle" id="theme-toggle">🌙</button>
+  <button class="btn-editor" id="btn-editor">🛠️ Modo Editor</button>
+</nav>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main-content">
+
+  <!-- ===== MODULE: BD ===== -->
+  <div class="module active" id="module-bd">
+    <div class="sidebar">
+      <h2 style="font-size:18px;margin-bottom:16px;">🗄️ Configuración de Base de Datos</h2>
+      <div id="bd-status-area" class="db-status-area">
+        <div id="bd-status-pg" class="status-indicator warning">
+          <span class="status-dot warning"></span> <span id="bd-status-pg-text">⏳ Detectando PostgreSQL...</span>
+        </div>
+        <div id="bd-detection-result" class="db-detection-result"></div>
+        <div id="bd-actions-area"></div>
+        <div class="console" id="bd-log" style="min-height:80px;max-height:200px;"></div>
+      </div>
+      <h3 style="margin-top:12px;">Configuración</h3>
+      <div class="db-config-grid">
+        <div class="form-group"><label>Host</label><input class="form-input" id="db-host" value="localhost"></div>
+        <div class="form-group"><label>Puerto</label><input class="form-input" id="db-port" value="5432"></div>
+        <div class="form-group"><label>Base de Datos</label><input class="form-input" id="db-database" value="ivan_proceso_his"></div>
+        <div class="form-group"><label>Esquema</label><input class="form-input" id="db-schema" value="es_ivan"></div>
+        <div class="form-group"><label>Usuario</label><input class="form-input" id="db-user" value="postgres"></div>
+        <div class="form-group"><label>Password</label><input class="form-input" id="db-password" type="password" placeholder="********"></div>
+      </div>
+      <button class="sidebar-btn" onclick="guardarConfigBD()">💾 Guardar Configuración</button>
+    </div>
+    <div class="content-panel">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="bd-monitor">Monitor</button>
+        <button class="tab-btn" data-tab="bd-logs">Registro de Logs</button>
+      </div>
+      <div class="tab-content active" id="tab-bd-monitor">
+        <div class="status-indicator ok" id="bd-detalle-status"><span class="status-dot ok"></span> <span id="bd-detalle-text">Sistema preparado</span></div>
+        <div class="console" id="bd-monitor-console"></div>
+      </div>
+      <div class="tab-content" id="tab-bd-logs">
+        <div class="console" id="bd-logs-console"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODULE: INGESTA ===== -->
+  <div class="module" id="module-ingesta">
+    <div class="sidebar">
+      <h2 style="font-size:18px;margin-bottom:8px;">📊 ETL Salud Cusco</h2>
+
+      <h3 style="color:#E67E22;">RUTAS DE ARCHIVOS</h3>
+      <button class="sidebar-btn" style="background:#5D4037;color:#fff;" id="btn-ing-carpeta">📂 Seleccionar carpeta atenciones</button>
+      <button class="sidebar-btn" style="background:#424242;" id="btn-ing-ruta-auto">↺ Usar ruta automática</button>
+      <div style="font-size:10px;color:var(--text-muted);margin:2px 0 8px;word-break:break-all;" id="ing-lbl-ruta">📁 Atenciones: automática</div>
+
+      <h3>Año</h3>
+      <select class="form-select" id="ing-anio">
+        <option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option selected>2026</option>
+      </select>
+
+      <button class="sidebar-btn" style="background:#2d2d2d;" id="ing-btn-meses">📅 Todos los meses</button>
+      <button class="sidebar-btn" style="background:#1f538d;color:#fff;" id="ing-btn-importar">📊 Importar HIS</button>
+      <button class="sidebar-btn" style="background:#0E6655;color:#fff;" id="ing-btn-refrescar">♻️ Refrescar HIS Proceso (Pac/Per)</button>
+
+      <div style="height:2px;background:gray;margin:8px 0;"></div>
+
+      <h3 style="color:#3498DB;">REPORTES</h3>
+      <button class="sidebar-btn" style="background:#3498DB;color:#fff;" onclick="switchModule('reportes')">📊 Ver Reportes MINSA</button>
+
+      <h3 style="color:#E74C3C;">⚠️ MANTENIMIENTO</h3>
+      <button class="sidebar-btn" style="background:#8d1f1f;color:#fff;" id="ing-btn-borrar">🗑️ Borrar Mes/Año Selecc.</button>
+      <button class="sidebar-btn" style="background:black;color:#fff;" id="ing-btn-vaciar">💀 VACIAR TODA LA TABLA</button>
+    </div>
+    <div class="content-panel">
+      <h2 style="font-size:24px;font-weight:bold;flex-shrink:0;">Centro de Control ETL</h2>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="ing-monitor">Vista de Monitoreo</button>
+        <button class="tab-btn" data-tab="ing-logs">Registro de Logs</button>
+      </div>
+      <div class="tab-content active" id="tab-ing-monitor">
+        <div class="status-indicator ok" id="ing-status"><span class="status-dot ok"></span> <span id="ing-status-text">Listo para iniciar</span></div>
+        <div class="progress-box" id="ing-progress-box">
+          <label id="ing-progress-label">Progreso de ingesta: esperando ejecución</label>
+          <div class="progress-bar-track"><div class="progress-bar-fill" id="ing-progress-bar"></div></div>
+          <div class="progress-info"><span id="ing-progress-eta">ETA: --:--</span><span id="ing-progress-time">Transcurrido: --:--</span></div>
+        </div>
+        <div class="console" id="ing-monitor-console"></div>
+      </div>
+      <div class="tab-content" id="tab-ing-logs">
+        <div class="console" id="ing-logs-console"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODULE: REPORTES ===== -->
+  <div class="module" id="module-reportes">
+    <div class="sidebar" id="rep-sidebar">
+      <h2 style="font-size:16px;margin-bottom:8px;">📊 Análisis y Reportes</h2>
+      <h3>Año</h3>
+      <select class="form-select" id="rep-anio">
+        <option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option selected>2026</option>
+      </select>
+      <div id="rep-editor-panel" style="display:none;">
+        <h3>Editor de Reportes</h3>
+        <button class="sidebar-btn" style="background:#34495E;color:#fff;" onclick="abrirGestorScripts()">📋 Scripts editables</button>
+        <button class="sidebar-btn" style="background:#117A65;color:#fff;" onclick="openModal('modal-nuevo-sql')">➕ Nuevo SQL</button>
+      </div>
+      <div id="rep-buttons"></div>
+    </div>
+    <div class="content-panel">
+      <h2 style="font-size:18px;font-weight:bold;flex-shrink:0;">Visor de Resultados</h2>
+      <div class="results-viewer" id="rep-resultados">Seleccione un reporte para visualizar resultados...</div>
+    </div>
+  </div>
+
+  <!-- ===== MODULE: MAESTROS ===== -->
+  <div class="module" id="module-maestros">
+    <div class="sidebar">
+      <h2 style="font-size:18px;margin-bottom:8px;">🗂️ Gestión de Maestros</h2>
+      <h3>Scripts Disponibles</h3>
+      <button class="sidebar-btn" style="background:#2ECC71;color:#fff;" onclick="ejecutarScript('scripts_python/ingesta/generar_his_proceso.py')">▶️ Generar HIS Proceso</button>
+      <button class="sidebar-btn" style="background:#2ECC71;color:#fff;" onclick="ejecutarScript('scripts_python/ingesta/procesar_eess_principal.py')">▶️ Procesar EESS principal</button>
+      <h3 style="margin-top:12px;">Tablas del Sistema</h3>
+      <button class="sidebar-btn primary" onclick="cargarMaestros()">🔄 Actualizar lista</button>
+      <div style="margin-top:4px;"><input class="form-input" id="maes-filtro" placeholder="Filtrar tablas..."></div>
+    </div>
+    <div class="content-panel">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="maes-tablas">Tablas</button>
+        <button class="tab-btn" data-tab="maes-logs">Logs</button>
+      </div>
+      <div class="tab-content active" id="tab-maes-tablas">
+        <div class="maestros-frame">
+          <div class="maestros-tree">
+            <table><thead><tr><th>Tabla</th><th>Esquema</th><th>Estado</th></tr></thead><tbody id="maes-tbody"><tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Haga clic en "Actualizar lista"</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-maes-logs">
+        <div class="console" id="maes-logs-console"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GLOBAL BOTTOM BAR ===== -->
+<div class="global-bar" id="global-bar">
+  <div class="global-bar-top">
+    <span class="global-status" id="global-status">Estado general: en espera</span>
+    <button class="btn-cancel" id="btn-cancelar" style="display:none;">Cancelar</button>
+  </div>
+  <div class="progress-bar-track" id="global-progress-track" style="display:none;">
+    <div class="progress-bar-fill" id="global-progress-bar"></div>
+  </div>
+  <div class="global-detail" id="global-detail">Sin procesos en ejecución.</div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ===== MODAL: LOGIN EDITOR ===== -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header"><h2>🔐 Modo Editor</h2><button class="modal-close" onclick="closeModal('modal-login')">&times;</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Ingresa credenciales para editar scripts y crear botones SQL.</p>
+      <div class="form-group"><label>Usuario</label><input class="form-input" id="editor-user" placeholder="Usuario" onkeydown="if(event.key==='Enter')document.getElementById('editor-pass').focus()"></div>
+      <div class="form-group"><label>Contraseña</label><input class="form-input" id="editor-pass" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')editorLogin()"></div>
+      <div id="editor-login-error" style="color:#E74C3C;font-size:13px;display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="sidebar-btn" onclick="closeModal('modal-login')">Cancelar</button>
+      <button class="sidebar-btn primary" onclick="editorLogin()">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: MESES ===== -->
+<div class="modal-overlay" id="modal-meses">
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-header"><h2>📅 Seleccionar Meses</h2><button class="modal-close" onclick="closeModal('modal-meses')">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="mes-todos" checked onchange="toggleTodosMeses(this)"> Todos los meses</label></div>
+      <div id="meses-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="sidebar-btn" onclick="cerrarMesesCancel()">Cancelar</button>
+      <button class="sidebar-btn primary" onclick="aceptarMeses()">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: EDITOR SCRIPT ===== -->
+<div class="modal-overlay" id="modal-editor">
+  <div class="modal" style="max-width:900px;max-height:90vh;">
+    <div class="modal-header"><h2 id="modal-editor-title">📝 Editor</h2><button class="modal-close" onclick="closeModal('modal-editor')">&times;</button></div>
+    <div class="modal-body"><textarea class="code-editor" id="editor-code" spellcheck="false" style="min-height:400px;"></textarea></div>
+    <div class="modal-footer">
+      <span id="editor-script-path" style="font-size:11px;color:var(--text-muted);flex:1;font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <button class="sidebar-btn" onclick="closeModal('modal-editor')">Cerrar</button>
+      <button class="sidebar-btn" style="background:#1F618D;color:#fff;" onclick="guardarScript()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: NUEVO SQL ===== -->
+<div class="modal-overlay" id="modal-nuevo-sql">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header"><h2>➕ Nuevo botón SQL</h2><button class="modal-close" onclick="closeModal('modal-nuevo-sql')">&times;</button></div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Se creará un nuevo SQL editable y un botón persistente.</p>
+      <div class="form-group"><label>Nombre del botón</label><input class="form-input" id="nuevo-sql-nombre" placeholder="Ej: Reporte Vacunas 2026"></div>
+      <div class="form-group"><label>Sección</label><select class="form-select" id="nuevo-sql-seccion"><option value="vacunas_cred">💉 Vacunas y CRED</option><option value="reportes">📊 Reportes</option></select></div>
+      <div class="form-group"><label>Color</label><input class="form-input" id="nuevo-sql-color" type="color" value="#117A65"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="sidebar-btn" onclick="closeModal('modal-nuevo-sql')">Cancelar</button>
+      <button class="sidebar-btn" style="background:#117A65;color:#fff;" onclick="crearNuevoSQL()">Crear y editar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: GESTOR SCRIPTS ===== -->
+<div class="modal-overlay" id="modal-gestor">
+  <div class="modal" style="max-width:800px;">
+    <div class="modal-header"><h2>📋 Scripts editables</h2><button class="modal-close" onclick="closeModal('modal-gestor')">&times;</button></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="sidebar-btn" style="background:#117A65;color:#fff;width:auto;" onclick="closeModal('modal-gestor');openModal('modal-nuevo-sql')">➕ Nuevo botón SQL</button>
+        <button class="sidebar-btn" style="background:#B9770E;color:#fff;width:auto;" onclick="toast('Disponible en versión escritorio','info')">📦 Publicar centros</button>
+        <button class="sidebar-btn" style="background:#2874A6;color:#fff;width:auto;" onclick="toast('Disponible en versión escritorio','info')">📥 Importar</button>
+        <button class="sidebar-btn" style="background:#626567;color:#fff;width:auto;" onclick="restaurarOriginales()">↩ Originales</button>
+      </div>
+      <h3 style="font-size:15px;color:var(--text-primary);margin-bottom:8px;">Reportes</h3>
+      <div id="gestor-reportes" class="script-list"></div>
+      <h3 style="font-size:15px;color:var(--text-primary);margin:16px 0 8px;">Gestión de Maestros</h3>
+      <div id="gestor-maestros" class="script-list"></div>
+    </div>
+    <div class="modal-footer"><button class="sidebar-btn" onclick="closeModal('modal-gestor')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- ===== MODAL: PASSWORD PG ===== -->
+<div class="modal-overlay" id="modal-pg-pass">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header"><h2 style="font-size:14px;color:#2C3E50;">CONEXION A POSTGRESQL</h2><button class="modal-close" onclick="closeModal('modal-pg-pass')">&times;</button></div>
+    <div class="modal-body">
+      <p style="color:#E74C3C;font-size:12px;margin-bottom:12px;">No se pudo conectar automáticamente</p>
+      <p style="font-size:13px;margin-bottom:8px;">Ingresa la contraseña de PostgreSQL:</p>
+      <label style="font-size:11px;color:var(--text-muted);">postgres@localhost:5432</label>
+      <input class="form-input" id="pg-pass-entry" type="password" style="font-size:14px;margin:4px 0 12px;" onkeydown="if(event.key==='Enter')conectarPG()">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="sidebar-btn" style="background:#27AE60;color:#fff;font-weight:bold;width:auto;" onclick="conectarPG()">🔌 CONECTAR</button>
+        <button class="sidebar-btn" style="background:#F39C12;color:#fff;width:auto;" onclick="recuperarPassPG()">🔑 RECUPERAR PASS</button>
+        <button class="sidebar-btn" style="background:#3498DB;color:#fff;width:auto;" onclick="reinstalarPG()">🔄 REINSTALAR PG</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="sidebar-btn" style="background:#95A5A6;color:#fff;" onclick="closeModal('modal-pg-pass')">CANCELAR</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
