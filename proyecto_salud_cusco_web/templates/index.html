@@ -17,6 +17,7 @@
   <div class="nav-spacer"></div>
   <span class="nav-status" id="nav-status-access">⏳ Validando entorno...</span>
   <button class="theme-toggle" id="theme-toggle">🌙</button>
+  <button class="btn-editor" id="btn-tunnel" title="Publicar en internet" style="background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;font-weight:bold;">🌐 Publicar</button>
   <button class="btn-editor" id="btn-editor">🛠️ Modo Editor</button>
 </nav>
 
@@ -45,6 +46,11 @@
         <div class="form-group"><label>Password</label><input class="form-input" id="db-password" type="password" placeholder="********"></div>
       </div>
       <button class="sidebar-btn" onclick="guardarConfigBD()">💾 Guardar Configuración</button>
+      <hr style="margin:16px 0;border-color:var(--border-color);">
+      <h3 style="font-size:14px;margin-bottom:8px;">🌐 Acceso Remoto</h3>
+      <div id="tunnel-status" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">⏳ Verificando...</div>
+      <div id="tunnel-url-box" style="display:none;background:#1a3a1a;border:1px solid #2ecc71;padding:8px;border-radius:6px;word-break:break-all;font-size:11px;margin-bottom:8px;"></div>
+      <button class="sidebar-btn" id="btn-tunnel-toggle" onclick="toggleTunnel()" style="background:#1a73e8;color:#fff;font-weight:bold;">🌐 INICIAR TUNNEL</button>
     </div>
     <div class="content-panel">
       <div class="tabs">

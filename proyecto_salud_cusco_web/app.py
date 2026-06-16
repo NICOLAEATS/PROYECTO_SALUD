@@ -286,12 +286,34 @@ def db_install():
 @app.route('/api/db/start-service', methods=['POST'])
 def db_start_service():
     try:
+        import platform
+        if platform.system() == "Linux":
+            for cmd in [
+                ["sudo", "-n", "systemctl", "start", "postgresql"],
+                ["systemctl", "start", "postgresql"],
+                ["pkexec", "systemctl", "start", "postgresql"],
+            ]:
+                try:
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, timeout=30,
+                    )
+                    if result.returncode == 0:
+                        time.sleep(2)
+                        return jsonify({'exito': True, 'mensaje': "PostgreSQL iniciado correctamente"})
+                except Exception:
+                    continue
+            return jsonify({
+                'exito': False,
+                'mensaje': "No se pudo iniciar PostgreSQL automáticamente. Ejecute manualmente: sudo systemctl start postgresql"
+            })
         sys.path.insert(0, str(SCRIPTS_INSTALACION))
         from instalar_postgresql import iniciar_servicio_postgresql, esperar_servicio_activo
-        exito, mensaje = iniciar_servicio_postgresql()
+        from db_config import detectar_postgresql_existente
+        info = detectar_postgresql_existente()
+        exito = iniciar_servicio_postgresql(info.get("servicio_nombre"))
         if exito:
-            esperar_servicio_activo(timeout=30)
-        return jsonify({'exito': exito, 'mensaje': mensaje})
+            esperar_servicio_activo(info.get("servicio_nombre"), timeout=30)
+        return jsonify({'exito': exito, 'mensaje': "Servicio iniciado" if exito else "No se pudo iniciar"})
     except Exception as e:
         return jsonify({'exito': False, 'mensaje': str(e)}), 500
 
@@ -562,6 +584,71 @@ def editor_restore():
     _guardar_config_editor(config)
     return jsonify({'mensaje': 'Scripts restaurados a valores originales'})
 
+# ==================== TUNNEL (Cloudflare) ====================
+_tunnel_proc: Optional[subprocess.Popen] = None
+_tunnel_url: str = ""
+
+@app.route('/api/tunnel/start', methods=['POST'])
+def tunnel_start():
+    global _tunnel_proc, _tunnel_url
+    if _tunnel_proc and _tunnel_proc.poll() is None:
+        return jsonify({'exito': True, 'url': _tunnel_url, 'mensaje': 'Tunnel ya activo'})
+    try:
+        import shutil, platform as _plt
+        if _plt.system() == "Windows":
+            cf_bin = shutil.which("cloudflared") or str(PROJECT_ROOT / "tunnel" / "cloudflared.exe")
+        else:
+            cf_bin = shutil.which("cloudflared") or "/tmp/cloudflared"
+        if not os.path.exists(cf_bin):
+            return jsonify({'exito': False, 'mensaje': 'cloudflared no encontrado. Descargalo de https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/'})
+        logfile = str(BASE_DIR / "tunnel" / "tunnel.log")
+        os.makedirs(os.path.dirname(logfile), exist_ok=True)
+        _tunnel_proc = subprocess.Popen(
+            [cf_bin, "tunnel", "--url", "http://127.0.0.1:5000", "--logfile", logfile],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        _tunnel_url = ""
+        return jsonify({'exito': True, 'mensaje': 'Tunnel iniciando...'})
+    except Exception as e:
+        return jsonify({'exito': False, 'mensaje': str(e)})
+
+@app.route('/api/tunnel/url', methods=['GET'])
+def tunnel_url():
+    global _tunnel_proc, _tunnel_url
+    if _tunnel_url:
+        return jsonify({'url': _tunnel_url, 'listo': True})
+    if _tunnel_proc is None or _tunnel_proc.poll() is not None:
+        return jsonify({'url': '', 'listo': False, 'mensaje': 'Tunnel no activo'})
+    logfile = str(PROJECT_ROOT / "tunnel" / "tunnel.log")
+    if os.path.exists(logfile):
+        try:
+            with open(logfile, 'r') as f:
+                content = f.read()
+            m = re.search(r'https://[a-z0-9.-]+\.trycloudflare\.com', content)
+            if m:
+                _tunnel_url = m.group()
+                return jsonify({'url': _tunnel_url, 'listo': True})
+        except Exception:
+            pass
+    return jsonify({'url': '', 'listo': False, 'mensaje': 'Esperando URL...'})
+
+@app.route('/api/tunnel/stop', methods=['POST'])
+def tunnel_stop():
+    global _tunnel_proc
+    if _tunnel_proc and _tunnel_proc.poll() is None:
+        _tunnel_proc.terminate()
+        _tunnel_proc.wait(timeout=5)
+        _tunnel_proc = None
+        return jsonify({'exito': True, 'mensaje': 'Tunnel detenido'})
+    return jsonify({'exito': True, 'mensaje': 'No hay tunnel activo'})
+
+@app.route('/api/tunnel/status', methods=['GET'])
+def tunnel_status():
+    global _tunnel_proc, _tunnel_url
+    activo = _tunnel_proc is not None and _tunnel_proc.poll() is None
+    return jsonify({'activo': activo, 'url': _tunnel_url if activo else ''})
+
 # ---------- Main ----------
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode, threaded=True)

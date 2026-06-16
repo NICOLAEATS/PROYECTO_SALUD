@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Proyecto Salud
+Comment=Sistema de Información Gerencial Geoespacial
+Exec=proyecto-salud
+Icon=/usr/share/proyecto-salud/icon.png
+Terminal=true
+Type=Application
+Categories=Office;Science;Health;
+StartupNotify=true

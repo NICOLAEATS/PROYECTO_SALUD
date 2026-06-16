@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -e
+
+APP_DIR="/usr/share/proyecto-salud"
+REPO_URL="https://github.com/NICOLAEATS/proyecto_salud_cusco.git"
+BUILD_DIR="/tmp/proyecto-salud-build"
+
+echo "=== Proyecto Salud - Actualización ==="
+
+# 1. Clonar o actualizar el repositorio
+if [ -d "$BUILD_DIR" ]; then
+    echo "-> Actualizando repositorio..."
+    cd "$BUILD_DIR"
+    git pull
+else
+    echo "-> Clonando repositorio..."
+    git clone "$REPO_URL" "$BUILD_DIR"
+    cd "$BUILD_DIR"
+fi
+
+# 2. Copiar archivos al directorio de instalación
+echo "-> Instalando archivos..."
+sudo mkdir -p "$APP_DIR"
+sudo cp -r proyecto_salud_cusco_web/* "$APP_DIR/"
+sudo cp -r scripts_python "$APP_DIR/"
+sudo cp -r scripts_sql "$APP_DIR/"
+sudo cp db_config.py "$APP_DIR/"
+
+# 3. Actualizar virtualenv
+echo "-> Instalando dependencias Python..."
+if [ -d "${APP_DIR}/venv" ]; then
+    sudo "${APP_DIR}/venv/bin/pip" install --upgrade -r "${APP_DIR}/requirements.txt"
+else
+    sudo python -m venv "${APP_DIR}/venv"
+    sudo "${APP_DIR}/venv/bin/pip" install --upgrade pip
+    sudo "${APP_DIR}/venv/bin/pip" install -r "${APP_DIR}/requirements.txt"
+fi
+
+# 4. Asegurar permisos
+sudo chown -R root:root "$APP_DIR"
+sudo chmod -R o+rX "$APP_DIR"
+
+echo ""
+echo "=== Actualización completada ==="
+echo "Ejecute 'proyecto-salud' para iniciar el servidor en http://localhost:5000"

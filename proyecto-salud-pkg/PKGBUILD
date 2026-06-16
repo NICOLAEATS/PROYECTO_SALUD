@@ -1,0 +1,54 @@
+# Maintainer: Proyecto Salud Cusco
+# PKGBUILD for the Proyecto Salud web application
+
+pkgname=proyecto-salud
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Sistema de Información Gerencial Geoespacial para vigilancia epidemiológica"
+arch=('any')
+url="https://github.com/NICOLAEATS/proyecto_salud_cusco"
+license=('MIT')
+depends=('python' 'python-pip')
+makedepends=('git' 'python' 'python-pip')
+source=("proyecto-salud"
+        "proyecto-salud.desktop"
+        "proyecto-salud-update")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP')
+noextract=()
+
+package() {
+  # Create install directories
+  install -d "$pkgdir/usr/share/$pkgname"
+  install -d "$pkgdir/usr/bin"
+
+  # Copy web app files
+  local PROJ_DIR="${srcdir}/../../.."
+  cp -r "$PROJ_DIR/proyecto_salud_cusco_web/"* "$pkgdir/usr/share/$pkgname/"
+  cp -r "$PROJ_DIR/scripts_python" "$pkgdir/usr/share/$pkgname/"
+  cp -r "$PROJ_DIR/scripts_sql" "$pkgdir/usr/share/$pkgname/"
+  cp "$PROJ_DIR/db_config.py" "$pkgdir/usr/share/$pkgname/"
+
+  # Create virtual environment and install dependencies
+  python -m venv "$pkgdir/usr/share/$pkgname/venv"
+  "$pkgdir/usr/share/$pkgname/venv/bin/pip" install --upgrade pip
+  "$pkgdir/usr/share/$pkgname/venv/bin/pip" install \
+      -r "$pkgdir/usr/share/$pkgname/requirements.txt"
+
+  # Install the wrapper scripts
+  install -Dm755 "$srcdir/proyecto-salud" "$pkgdir/usr/bin/proyecto-salud"
+  install -Dm755 "$srcdir/proyecto-salud-update" "$pkgdir/usr/bin/proyecto-salud-update"
+
+  # Install desktop entry
+  install -Dm644 "$srcdir/proyecto-salud.desktop" \
+      "$pkgdir/usr/share/applications/proyecto-salud.desktop"
+
+  # Set permissions
+  chmod -R o+rX "$pkgdir/usr/share/$pkgname"
+
+  echo ""
+  echo "=== Instalación completa ==="
+  echo "Ejecute 'proyecto-salud' para iniciar en http://localhost:5000"
+  echo "Ejecute 'sudo proyecto-salud-update' para actualizar"
+}

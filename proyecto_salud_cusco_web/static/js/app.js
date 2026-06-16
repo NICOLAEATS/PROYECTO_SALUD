@@ -827,11 +827,84 @@ function logAll(line){
     logGlobal(line);
 }
 
+// ==================== TUNNEL ====================
+async function checkTunnelStatus(){
+    try{
+        const r=await fetch('/api/tunnel/status'); const d=await r.json();
+        const status=document.getElementById('tunnel-status');
+        const urlBox=document.getElementById('tunnel-url-box');
+        const btn=document.getElementById('btn-tunnel-toggle');
+        if(d.activo){
+            status.innerHTML='🟢 <strong>Activo</strong>';
+            status.style.color='#2ECC71';
+            urlBox.style.display='block';
+            urlBox.innerHTML=`🔗 <a href="${d.url}" target="_blank" style="color:#2ECC71;">${d.url}</a><br><small style="color:var(--text-muted)">Comparte este enlace para que accedan desde cualquier lugar</small>`;
+            btn.textContent='⏹ DETENER TUNNEL';
+            btn.style.background='#E74C3C';
+        }else{
+            status.innerHTML='🔴 <strong>Inactivo</strong>';
+            status.style.color='var(--text-muted)';
+            urlBox.style.display='none';
+            btn.textContent='🌐 INICIAR TUNNEL';
+            btn.style.background='#1a73e8';
+        }
+    }catch(e){}
+}
+
+async function toggleTunnel(){
+    const btn=document.getElementById('btn-tunnel-toggle');
+    const status=document.getElementById('tunnel-status');
+    try{
+        const r=await fetch('/api/tunnel/status'); const cur=await r.json();
+        if(cur.activo){
+            btn.disabled=true; btn.textContent='⏳ Deteniendo...';
+            await fetch('/api/tunnel/stop',{method:'POST'});
+            checkTunnelStatus();
+            toast('Tunnel detenido','info');
+        }else{
+            btn.disabled=true; btn.textContent='⏳ Iniciando...';
+            status.innerHTML='⏳ <strong>Iniciando tunnel...</strong>'; status.style.color='orange';
+            const r2=await fetch('/api/tunnel/start',{method:'POST'}); const d=await r2.json();
+            if(!d.exito){
+                status.innerHTML='❌ <strong>Error: '+d.mensaje+'</strong>'; status.style.color='#E74C3C';
+                toast('Error: '+d.mensaje,'error');
+                btn.disabled=false; return;
+            }
+            // Poll for URL
+            for(let i=0;i<30;i++){
+                await new Promise(r=>setTimeout(r,1000));
+                const r3=await fetch('/api/tunnel/url'); const u=await r3.json();
+                if(u.listo){
+                    checkTunnelStatus();
+                    toast('✅ Sistema publicado en: '+u.url,'success');
+                    navigator.clipboard?.writeText(u.url);
+                    btn.disabled=false;
+                    return;
+                }
+                if(i%5===0) status.innerHTML='⏳ <strong>Generando URL ('+(i+1)+'s)...</strong>';
+            }
+            status.innerHTML='❌ <strong>Timeout - revisa tunnel/tunnel.log</strong>'; status.style.color='#E74C3C';
+            toast('Timeout esperando URL','error');
+        }
+    }catch(e){toast('Error: '+e.message,'error')}
+    btn.disabled=false;
+}
+
 // ==================== INIT ====================
 async function init(){
     await cargarConfigBD();
     await detectarBD();
     await cargarReportes();
+    checkTunnelStatus();
 }
 
 init();
+
+// Tunnel nav button
+document.getElementById('btn-tunnel')?.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('btn-nav-bd').classList.add('active');
+    document.querySelectorAll('.module').forEach(m=>m.classList.remove('active'));
+    document.getElementById('module-bd').classList.add('active');
+    checkTunnelStatus();
+});

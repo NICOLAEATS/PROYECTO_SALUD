@@ -1037,10 +1037,17 @@ import subprocess
 import socket
 
 
+import platform as _platform
+
 RUTAS_POSTGRESQL = [
     r"C:\Program Files\PostgreSQL",
     r"C:\PostgreSQL",
+    "/usr/bin",
+    "/usr/lib/postgresql",
+    "/usr/pgsql",
 ]
+
+ES_WINDOWS = _platform.system() == "Windows"
 
 
 def _probar_puerto_powershell(puerto: int = 5432) -> bool:
@@ -1226,12 +1233,89 @@ def _buscar_conexion_cmd() -> str:
     return ""
 
 
+def _detectar_postgresql_linux() -> dict:
+    """Detecta PostgreSQL en Linux usando comandos del sistema."""
+    info = {
+        "instalado": False,
+        "version": None,
+        "servicio_activo": False,
+        "ruta_bin": None,
+        "servicio_nombre": "postgresql",
+        "mensaje": "",
+    }
+
+    # 1. Buscar binarios PostgreSQL en PATH
+    psql_path = None
+    for cmd in ["psql", "pg_config"]:
+        try:
+            proc = subprocess.run(["which", cmd], capture_output=True, text=True, timeout=5)
+            if proc.returncode == 0:
+                path = proc.stdout.strip()
+                if cmd == "psql":
+                    psql_path = path
+                if path:
+                    info["instalado"] = True
+        except Exception:
+            pass
+
+    # 2. Buscar en rutas típicas Linux
+    if not psql_path:
+        for ruta in RUTAS_POSTGRESQL:
+            candidate = os.path.join(ruta, "psql")
+            if os.path.exists(candidate):
+                psql_path = candidate
+                info["instalado"] = True
+                break
+            # Buscar subdirectorios pg* en /usr/lib/postgresql
+            if os.path.isdir(ruta):
+                try:
+                    for item in os.listdir(ruta):
+                        pgbin = os.path.join(ruta, item, "bin", "psql")
+                        if os.path.exists(pgbin):
+                            psql_path = pgbin
+                            info["instalado"] = True
+                            info["ruta_bin"] = os.path.join(ruta, item, "bin")
+                            break
+                except OSError:
+                    pass
+
+    if psql_path and not info["ruta_bin"]:
+        info["ruta_bin"] = os.path.dirname(psql_path)
+
+    # 3. Obtener versión desde psql --version
+    if info["instalado"]:
+        try:
+            proc = subprocess.run(
+                [psql_path or "psql", "--version"],
+                capture_output=True, text=True, timeout=5,
+            )
+            m = re.search(r'(\d+)(?:\.\d+)*', proc.stdout)
+            if m:
+                info["version"] = m.group(1)
+        except Exception:
+            pass
+
+    # 4. Verificar servicio systemd
+    try:
+        proc = subprocess.run(
+            ["systemctl", "is-active", "postgresql"],
+            capture_output=True, text=True, timeout=5,
+        )
+        info["servicio_activo"] = proc.stdout.strip() == "active"
+    except Exception:
+        pass
+
+    # 5. Si el puerto responde, forzar servicio_activo = True
+    if _pg_responde_en_puerto(5432):
+        info["servicio_activo"] = True
+        info["instalado"] = True
+
+    return info
+
+
 def detectar_postgresql_existente() -> dict:
     """Detecta si PostgreSQL está instalado y retorna información detallada.
-    
-    IMPORTANTE: El puerto 5432 es la fuente principal de verdad.
-    Si el puerto no responde, PostgreSQL NO está operativo, sin importar
-    qué servicios o archivos existan (pueden ser residuales).
+    Funciona en Windows y Linux.
     """
     resultado = {
         "instalado": False,
@@ -1243,117 +1327,116 @@ def detectar_postgresql_existente() -> dict:
         "mensaje": "",
     }
 
-    # 0. VERIFICACIÓN PRINCIPAL: El puerto 5432 debe responder
-    # Esta es LA ÚNICA verificación que confirma que PostgreSQL está activo
+    # 0a. En Linux, detectar vía comandos del sistema
+    if not ES_WINDOWS:
+        linux_info = _detectar_postgresql_linux()
+        resultado["instalado"] = linux_info["instalado"]
+        resultado["version"] = linux_info["version"]
+        resultado["servicio_activo"] = linux_info["servicio_activo"]
+        resultado["ruta_bin"] = linux_info["ruta_bin"]
+        resultado["servicio_nombre"] = linux_info["servicio_nombre"]
+
+    # 0b. VERIFICACIÓN PRINCIPAL: El puerto 5432 debe responder
     pg_activo = _verificar_postgresql_activo()
-    
-    if not pg_activo:
-        # PostgreSQL NO está activo - no buscar más
-        resultado["mensaje"] = "PostgreSQL no encontrado en este equipo"
-        return resultado
-    
-    # Si llegamos aquí, el puerto SÍ responde = PostgreSQL está activo
-    resultado["instalado"] = True
-    resultado["servicio_activo"] = True
-    resultado["puerto"] = 5432
 
-    # 1. Intentar conexión psycopg2 para obtener versión
-    try:
-        import psycopg2
-        passwords_a_probar = [
-            PASSWORD_POSTGRES, "ivan", "postgres", "admin", "root",
-            "Password123!", "Admin123!", "Psql123!", "postgres123",
-            "root123", "admin123", "123456", "",
-        ]
-        hosts_a_probar = _obtener_ips_locales()
-        
-        for pwd in passwords_a_probar:
-            for host in hosts_a_probar:
-                try:
-                    conn = psycopg2.connect(
-                        host=host, port=5432, user="postgres",
-                        password=pwd, dbname="postgres", connect_timeout=3,
-                    )
-                    conn.close()
+    if pg_activo:
+        resultado["instalado"] = True
+        resultado["servicio_activo"] = True
+        resultado["puerto"] = 5432
+
+    # 1. Intentar conexión psycopg2 para obtener versión (si activo)
+    if pg_activo:
+        try:
+            import psycopg2
+            passwords_a_probar = [
+                PASSWORD_POSTGRES, "ivan", "postgres", "admin", "root",
+                "Password123!", "Admin123!", "Psql123!", "postgres123",
+                "root123", "admin123", "123456", "",
+            ]
+            hosts_a_probar = _obtener_ips_locales()
+
+            for pwd in passwords_a_probar:
+                for host in hosts_a_probar:
                     try:
-                        conn2 = psycopg2.connect(
+                        conn = psycopg2.connect(
                             host=host, port=5432, user="postgres",
-                            password=pwd, dbname="postgres", connect_timeout=3
+                            password=pwd, dbname="postgres", connect_timeout=3,
                         )
-                        cur = conn2.cursor()
-                        cur.execute("SHOW server_version_num;")
-                        ver_num = cur.fetchone()[0]
-                        resultado["version"] = ver_num[:2]
-                        cur.close()
-                        conn2.close()
+                        conn.close()
+                        try:
+                            conn2 = psycopg2.connect(
+                                host=host, port=5432, user="postgres",
+                                password=pwd, dbname="postgres", connect_timeout=3
+                            )
+                            cur = conn2.cursor()
+                            cur.execute("SHOW server_version_num;")
+                            ver_num = cur.fetchone()[0]
+                            resultado["version"] = ver_num[:2]
+                            cur.close()
+                            conn2.close()
+                        except Exception:
+                            pass
+                        break
                     except Exception:
-                        pass
-                    break
-                except Exception:
-                    continue
-            if resultado.get("version"):
-                break
-    except ImportError:
-        pass
-
-    # 2. Buscar servicio de PostgreSQL (para información adicional)
-    try:
-        proc = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "Get-Service | Where-Object {$_.DisplayName -like '*PostgreSQL*' -and $_.DisplayName -notlike '*pgAgent*'} | ConvertTo-Json -Compress"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=10,
-        )
-        if proc.stdout.strip():
-            try:
-                servicios = json.loads(proc.stdout)
-                if isinstance(servicios, dict):
-                    servicios = [servicios]
-                for svc in servicios:
-                    svc_name = svc.get("Name", "")
-                    display_name = svc.get("DisplayName", "")
-                    # Ignorar pgagent
-                    if "pgagent" in svc_name.lower():
                         continue
-                    if not resultado["servicio_nombre"]:
-                        resultado["servicio_nombre"] = svc_name
-                    ver_match = re.search(r'\d+', display_name)
-                    if ver_match and not resultado["version"]:
-                        resultado["version"] = ver_match.group()
-                    if svc.get("Status") == 1:
-                        resultado["servicio_activo"] = True
-            except (json.JSONDecodeError, TypeError):
-                pass
-    except Exception:
-        pass
+                if resultado.get("version"):
+                    break
+        except ImportError:
+            pass
+
+    # 2. En Windows, buscar servicio PostgreSQL via PowerShell
+    if ES_WINDOWS:
+        try:
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "Get-Service | Where-Object {$_.DisplayName -like '*PostgreSQL*' -and $_.DisplayName -notlike '*pgAgent*'} | ConvertTo-Json -Compress"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=10,
+            )
+            if proc.stdout.strip():
+                try:
+                    servicios = json.loads(proc.stdout)
+                    if isinstance(servicios, dict):
+                        servicios = [servicios]
+                    for svc in servicios:
+                        svc_name = svc.get("Name", "")
+                        display_name = svc.get("DisplayName", "")
+                        if "pgagent" in svc_name.lower():
+                            continue
+                        if not resultado["servicio_nombre"]:
+                            resultado["servicio_nombre"] = svc_name
+                        ver_match = re.search(r'\d+', display_name)
+                        if ver_match and not resultado["version"]:
+                            resultado["version"] = ver_match.group()
+                        if svc.get("Status") == 1:
+                            resultado["servicio_activo"] = True
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        except Exception:
+            pass
 
     # 3. Buscar en carpetas típicas (para obtener ruta bin)
-    for ruta in RUTAS_POSTGRESQL:
-        if not os.path.exists(ruta):
-            continue
-        try:
-            subdirs = os.listdir(ruta)
-            pg_versions = [d for d in subdirs if d.startswith("pg") and os.path.isdir(os.path.join(ruta, d))]
-            if pg_versions:
-                pg_versions.sort(key=lambda x: [int(n) for n in re.findall(r'\d+', x)], reverse=True)
-                pg_dir = pg_versions[0]
-                ver_match = re.search(r'\d+', pg_dir)
-                if ver_match and not resultado["version"]:
-                    resultado["version"] = ver_match.group()
-                if not resultado["ruta_bin"]:
-                    resultado["ruta_bin"] = os.path.join(ruta, pg_dir, "bin")
-                break
-        except OSError:
-            continue
+    if not resultado["ruta_bin"]:
+        for ruta in RUTAS_POSTGRESQL:
+            if not os.path.exists(ruta):
+                continue
+            try:
+                subdirs = os.listdir(ruta)
+                pg_versions = [d for d in subdirs if d.startswith("pg") and os.path.isdir(os.path.join(ruta, d))]
+                if pg_versions:
+                    pg_versions.sort(key=lambda x: [int(n) for n in re.findall(r'\d+', x)], reverse=True)
+                    pg_dir = pg_versions[0]
+                    ver_match = re.search(r'\d+', pg_dir)
+                    if ver_match and not resultado["version"]:
+                        resultado["version"] = ver_match.group()
+                    if not resultado["ruta_bin"]:
+                        resultado["ruta_bin"] = os.path.join(ruta, pg_dir, "bin")
+                    break
+            except OSError:
+                continue
 
-    # 4. Generar mensaje descriptivo
-    ver = resultado["version"] or "?"
-    resultado["mensaje"] = f"PostgreSQL {ver} instalado y activo"
-
-    return resultado
-
-    # 5. Verificar estado del servicio encontrado
-    if resultado["servicio_nombre"] and not resultado["servicio_activo"]:
+    # 4. Verificar estado del servicio (Windows: sc query)
+    if ES_WINDOWS and resultado["servicio_nombre"] and not resultado["servicio_activo"]:
         try:
             check = subprocess.run(
                 ["sc", "query", resultado["servicio_nombre"]],
@@ -1363,7 +1446,7 @@ def detectar_postgresql_existente() -> dict:
         except Exception:
             pass
 
-    # 6. Leer puerto desde postgresql.conf
+    # 5. Leer puerto desde postgresql.conf
     if resultado["ruta_bin"] and os.path.exists(resultado["ruta_bin"]):
         pg_conf = os.path.join(resultado["ruta_bin"], "..", "data", "postgresql.conf")
         if os.path.exists(pg_conf):
@@ -1379,7 +1462,7 @@ def detectar_postgresql_existente() -> dict:
             except OSError:
                 pass
 
-    # 7. Generar mensaje descriptivo
+    # 6. Generar mensaje descriptivo
     if resultado["instalado"]:
         if resultado["servicio_activo"]:
             ver = resultado["version"] or "?"
