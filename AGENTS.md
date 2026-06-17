@@ -95,17 +95,20 @@ Convertir el sistema CustomTkinter desktop a web (Flask + HTML/CSS/JS), subir a 
   - Scripts Windows: `tunnel/start_tunnel.ps1`, `tunnel/start_tunnel.bat`.
 - Debug mode controlado por `FLASK_DEBUG` env var (desactivado por defecto).
 - Instalación local ejecutada con éxito en `~/.local/share/proyecto-salud/`.
+- **Nuevos módulos web**: Padrón/Población (PN+CNV unificados), Geolocalización (Leaflet), Dashboards.
+  - `static/js/modules.js`: JS independiente para los 4 módulos nuevos.
+  - `scripts_python/bi/cargar_padron_nominal.py`: Carga PN CSV → tabla `padron_nominal`.
+  - `scripts_python/bi/cargar_cnv.py`: Carga CNV CSV → tabla `cnv_cusco` (dinámica desde headers).
+  - 8 endpoints REST en `app.py`: status/carga/consulta para PN y CNV, `/api/mapa/*`, `/api/dashboards/*`.
+- **Fix CNV**: 0 registros → 257,019. Causas: NUL (0x00) en datos, columna `Ubigeo_LugarNacido` mal nombrada, batch final sin try/except.
+- **Fix reportes**: `pandas`+`sqlalchemy` instalados en web venv. `UnicodeEncodeError` corregido con `sys.stdout.reconfigure(encoding='utf-8', errors='replace')`.
+- **Fix SQL scripts**: `tabla vacunas cred_ivan.sql`, `tabla_materno_ivan.sql`, `tabla_iras_edas_ivan_2026.sql` — agregado `DROP TABLE IF EXISTS + CREATE TABLE ... AS ... WHERE 1=0` donde faltaba.
+- **Push a GitHub**: commits `268448a` (módulos) y `983923d` (correcciones encoding + docs + SQLs).
 
 ### Blocked / Paused
 - **Oracle Cloud Free Tier**: El usuario pagó $1 USD de verificación pero la creación de cuenta falla con error genérico ("Lo sentimos, se ha producido un error al crear su cuenta"). Sugerencias: esperar 24h, probar otro navegador en incógnito, verificar que la dirección de facturación coincida exactamente con la tarjeta, no usar VPN.
 - **Alternativa**: Hetzner CX22 (€3.99/mes con PayPal) como plan B si Oracle no funciona.
-
-### Next Steps (when resume)
-1. Probar Oracle Cloud de nuevo (esperar 24h o probar otro navegador/PC).
-2. Si Oracle sigue fallando, crear cuenta en Hetzner y desplegar VM CX22 con PayPal.
-3. Configurar VM con script cloud-init: PostgreSQL + Flask + clonar repo de GitHub.
-4. Probar acceso público desde cualquier PC sin PostgreSQL ni Git instalados.
-5. Agregar protección CSRF y manejo de sesiones para producción.
+- **Años hardcodeados**: Los SQLs en `SCRIPTS CORREGIDOS ULTIMOS/` usan años fijos (2025/2026) en vez de `{ANIO}`, ignorando el parámetro del web UI.
 
 ## Key Decisions
 - SocketIO → polling REST para eliminar errores de protocolo.
@@ -113,13 +116,21 @@ Convertir el sistema CustomTkinter desktop a web (Flask + HTML/CSS/JS), subir a 
 - PostgreSQL detection cross-platform con `ES_WINDOWS` branching.
 - Cloudflare Tunnel para acceso remoto temporal gratuito (sin cuenta).
 - Oracle Cloud Free Tier (gratis siempre) o Hetzner (€3.99/mes PayPal) como destino de despliegue.
+- **CSV dinámico**: `cargar_cnv.py` crea tabla desde headers del CSV (lowercased+stripped) para evitar mismatch de nombres.
+- **Módulos nuevos en `modules.js`** separado de `app.js` para no afectar código existente.
 
 ## Relevant Paths
-- `proyecto_salud_cusco_web/app.py` - Flask REST API + polling + tunnel (~654 líneas)
-- `proyecto_salud_cusco_web/templates/index.html` - SPA frontend (~285 líneas)
-- `proyecto_salud_cusco_web/static/js/app.js` - Frontend JS polling + Fetch (~880 líneas)
-- `proyecto_salud_cusco_web/static/css/style.css` - Temas claro/oscuro (~781 líneas)
-- `proyecto_salud_cusco_web/config.py` - Auto-detección PROJECT_ROOT
+- `proyecto_salud_cusco_web/app.py` - Flask REST API + polling + tunnel + 8 endpoints nuevos (~1095 líneas)
+- `proyecto_salud_cusco_web/templates/index.html` - SPA frontend (~543 líneas)
+- `proyecto_salud_cusco_web/static/js/app.js` - Frontend JS polling + Fetch (~1331 líneas)
+- `proyecto_salud_cusco_web/static/js/modules.js` - JS módulos nuevos: PN, CNV, Mapa, Dashboards (~293 líneas)
+- `proyecto_salud_cusco_web/static/css/style.css` - Temas claro/oscuro + `.data-table`
+- `proyecto_salud_cusco_web/config.py` - Auto-detección PROJECT_ROOT + rutas SCRIPTS_PADRONES, SCRIPTS_BI_LOAD
 - `proyecto_salud_cusco_web/tunnel/` - Scripts tunnel (Windows)
+- `scripts_python/bi/cargar_cnv.py` - Carga CNV con sanitize NUL + tabla dinámica
+- `scripts_python/bi/cargar_padron_nominal.py` - Carga PN con sanitize NUL + batch final seguro
+- `scripts_python/bi/04_generador_reportes.py` - Generador reportes con fix encoding UTF-8
+- `scripts_python/bi/04_ejecutor_procedures.py` - Ejecutor SQL con replace `{ANIO}`
+- `scripts_sql/SCRIPTS CORREGIDOS ULTIMOS/` - SQLs corregidos (vacunas, materno, iras_edas)
 - `db_config.py` - PostgreSQL detection cross-platform (Linux + Windows)
 - `proyecto-salud-pkg/` - Paquete pacman (PKGBUILD, scripts install/uninstall)

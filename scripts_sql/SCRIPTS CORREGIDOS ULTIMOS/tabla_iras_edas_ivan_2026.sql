@@ -79,6 +79,16 @@ ON tmp_citas_validas(id_cita);
 ANALYZE tmp_citas_validas;
 
 -- ============================================
+-- CREAR TABLA (si no existe)
+-- ============================================
+
+DROP TABLE IF EXISTS es_ivan.tabla_iras_edas;
+CREATE TABLE es_ivan.tabla_iras_edas AS
+SELECT *
+FROM es_ivan.his_proceso
+WHERE 1=0;
+
+-- ============================================
 -- ELIMINAR INFORMACIÓN DEL AÑO
 -- ============================================
 

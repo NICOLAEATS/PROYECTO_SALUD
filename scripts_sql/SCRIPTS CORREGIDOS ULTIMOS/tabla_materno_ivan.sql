@@ -54,6 +54,16 @@ CREATE INDEX idx_tmp_citas_validas
 ON tmp_citas_validas(id_cita);
 
 -- ============================================
+-- CREAR TABLA (si no existe)
+-- ============================================
+
+DROP TABLE IF EXISTS es_ivan.tabla_materno;
+CREATE TABLE es_ivan.tabla_materno AS
+SELECT *
+FROM es_ivan.his_proceso
+WHERE 1=0;
+
+-- ============================================
 -- ELIMINAR AÑO
 -- ============================================
 
