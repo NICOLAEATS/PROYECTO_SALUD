@@ -6224,4 +6224,3 @@ END;
 $$;
 
 CALL es_ivan.sp_generar_cred_2026();
-*/*/
