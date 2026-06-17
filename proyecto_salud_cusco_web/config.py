@@ -11,16 +11,20 @@ SCRIPTS_MANTENIMIENTO = PROJECT_ROOT / "scripts_python" / "mantenimiento"
 SCRIPTS_INSTALACION = PROJECT_ROOT / "scripts_python" / "instalacion"
 SCRIPTS_SQL_REPORTES = PROJECT_ROOT / "scripts_sql" / "reportes"
 SCRIPTS_SQL_VACUNAS = PROJECT_ROOT / "scripts_sql" / "scripst tabla y reportes vacunas-cred"
+SCRIPTS_SQL_CORREGIDOS = PROJECT_ROOT / "scripts_sql" / "SCRIPTS CORREGIDOS ULTIMOS"
+SCRIPTS_PADRONES = PROJECT_ROOT / "scripts_sql" / "PADRONES"
+SCRIPTS_BI_LOAD = PROJECT_ROOT / "scripts_python" / "bi"
 
 EDITOR_BUTTONS_FILE = PROJECT_ROOT / "editor_buttons.json"
 
 BOTONES_REPORTE_PREDETERMINADOS = [
-    {"nombre": "1\u20e3 Tabla Vacunas/CRED", "script": "scripts_python/bi/generar_tabla_vacunas.py", "seccion": "vacunas_cred", "color_bg": "#3498DB"},
-    {"nombre": "2\u20e3 Tabla Materno", "script": "scripts_sql/scripst tabla y reportes vacunas-cred/tabla materno.sql", "seccion": "vacunas_cred", "color_bg": "#9B59B6"},
-    {"nombre": "3\u20e3 Tabla PAI", "script": "scripts_sql/scripst tabla y reportes vacunas-cred/Script-136 moshe vacunas.sql", "seccion": "vacunas_cred", "color_bg": "#8E44AD"},
-    {"nombre": "Reporte CRED", "script": "scripts_sql/scripst tabla y reportes vacunas-cred/cred2026_clean.sql", "seccion": "reportes", "color_bg": "#F39C12"},
+    {"nombre": "1\u20e3 Tabla Vacunas/CRED", "script": "scripts_sql/SCRIPTS CORREGIDOS ULTIMOS/tabla vacunas cred_ivan.sql", "seccion": "vacunas_cred", "color_bg": "#3498DB"},
+    {"nombre": "2\u20e3 Tabla Materno", "script": "scripts_sql/SCRIPTS CORREGIDOS ULTIMOS/tabla_materno_ivan.sql", "seccion": "vacunas_cred", "color_bg": "#9B59B6"},
+    {"nombre": "3\u20e3 Tabla PAI", "script": "scripts_sql/SCRIPTS CORREGIDOS ULTIMOS/tabla vacunas cred_ivan.sql", "seccion": "vacunas_cred", "color_bg": "#8E44AD"},
+    {"nombre": "4\u20e3 Tabla IRAS/EDAS", "script": "scripts_sql/SCRIPTS CORREGIDOS ULTIMOS/tabla_iras_edas_ivan_2026.sql", "seccion": "vacunas_cred", "color_bg": "#1ABC9C"},
+    {"nombre": "Reporte CRED", "script": "scripts_sql/SCRIPTS CORREGIDOS ULTIMOS/reporte_cred_ivan_2026.sql", "seccion": "reportes", "color_bg": "#F39C12"},
     {"nombre": "Reporte Vacunas", "script": "scripts_sql/scripst tabla y reportes vacunas-cred/REPORTE_VACUNAS_POR A\u00d1O   moshe.sql", "seccion": "reportes", "color_bg": "#E74C3C"},
-    {"nombre": "Reporte IRAS/EDAS", "script": "scripts_sql/scripst tabla y reportes vacunas-cred/REPORTE_IRAS_EDAS_POR_A\u00d1O   moshe.sql", "seccion": "reportes", "color_bg": "#2ECC71"},
+    {"nombre": "Reporte IRAS/EDAS", "script": "scripts_sql/SCRIPTS CORREGIDOS ULTIMOS/reporte_iras_edas_2026_ivan.sql", "seccion": "reportes", "color_bg": "#2ECC71"},
 ]
 
 SCRIPTS_MAESTROS_EDITABLES = [

@@ -3,6 +3,10 @@ from sqlalchemy import create_engine, text
 import sys
 import os
 
+# Fix Windows console encoding for emojis
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 # Importar configuración flexible de base de datos
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from db_config import get_db_config

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema de Monitoreo de Salud - GERESA Cusco</title>
 <link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -14,6 +16,9 @@
   <button class="nav-btn" data-module="ingesta" id="btn-nav-ingesta">⚙️ Ingesta y Mantenimiento</button>
   <button class="nav-btn" data-module="reportes" id="btn-nav-reportes">📊 Análisis y Reportes</button>
   <button class="nav-btn" data-module="maestros" id="btn-nav-maestros">🗂️ Gestión de Maestros</button>
+  <button class="nav-btn" data-module="poblacion" id="btn-nav-poblacion">👥 Padrón/Población</button>
+  <button class="nav-btn" data-module="mapa" id="btn-nav-mapa">🗺️ Geolocalización</button>
+  <button class="nav-btn" data-module="dashboards" id="btn-nav-dashboards">📈 Dashboards</button>
   <div class="nav-spacer"></div>
   <span class="nav-status" id="nav-status-access">⏳ Validando entorno...</span>
   <button class="theme-toggle" id="theme-toggle">🌙</button>
@@ -137,35 +142,250 @@
     </div>
   </div>
 
-  <!-- ===== MODULE: MAESTROS ===== -->
+  <!-- ===== MODULE: MAESTROS (Rediseñado) ===== -->
   <div class="module" id="module-maestros">
-    <div class="sidebar">
-      <h2 style="font-size:18px;margin-bottom:8px;">🗂️ Gestión de Maestros</h2>
-      <h3>Scripts Disponibles</h3>
-      <button class="sidebar-btn" style="background:#2ECC71;color:#fff;" onclick="ejecutarScript('scripts_python/ingesta/generar_his_proceso.py')">▶️ Generar HIS Proceso</button>
-      <button class="sidebar-btn" style="background:#2ECC71;color:#fff;" onclick="ejecutarScript('scripts_python/ingesta/procesar_eess_principal.py')">▶️ Procesar EESS principal</button>
-      <h3 style="margin-top:12px;">Tablas del Sistema</h3>
-      <button class="sidebar-btn primary" onclick="cargarMaestros()">🔄 Actualizar lista</button>
-      <div style="margin-top:4px;"><input class="form-input" id="maes-filtro" placeholder="Filtrar tablas..."></div>
-    </div>
-    <div class="content-panel">
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="maes-tablas">Tablas</button>
-        <button class="tab-btn" data-tab="maes-logs">Logs</button>
-      </div>
-      <div class="tab-content active" id="tab-maes-tablas">
-        <div class="maestros-frame">
-          <div class="maestros-tree">
-            <table><thead><tr><th>Tabla</th><th>Esquema</th><th>Estado</th></tr></thead><tbody id="maes-tbody"><tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Haga clic en "Actualizar lista"</td></tr></tbody></table>
+    <div class="maes-container">
+      <!-- ===================== COLUMNA IZQUIERDA ===================== -->
+      <div class="maes-left">
+
+        <!-- Card: Carpeta CSV -->
+        <div class="maes-card">
+          <div class="maes-card-header">
+            <span class="maes-card-icon">📂</span>
+            <span class="maes-card-title">Carpeta de Maestros CSV</span>
+          </div>
+          <div class="maes-card-body">
+            <div class="maes-ruta-frame">
+              <span class="maes-ruta-label" id="maes-ruta-text">Ninguna carpeta seleccionada</span>
+              <button class="maes-btn maes-btn-outline" onclick="maesSeleccionarCarpeta()">📁 Examinar</button>
+            </div>
           </div>
         </div>
+
+        <!-- Card: Archivos CSV -->
+        <div class="maes-card">
+          <div class="maes-card-header">
+            <span class="maes-card-icon">📄</span>
+            <span class="maes-card-title">Archivos CSV</span>
+            <span class="maes-badge" id="maes-csv-count">0</span>
+          </div>
+          <div class="maes-card-body">
+            <div class="maes-csv-list" id="maes-csv-list">
+              <div class="maes-empty">Selecciona una carpeta</div>
+            </div>
+            <div class="maes-csv-actions">
+              <button class="maes-btn maes-btn-sm" onclick="maesSeleccionarTodosCSV()">☑ Seleccionar todos</button>
+              <button class="maes-btn maes-btn-sm maes-btn-primary" onclick="maesCargarSeleccionados()">🚀 Cargar seleccionados</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Actualización Rápida -->
+        <div class="maes-card">
+          <div class="maes-card-header">
+            <span class="maes-card-icon">⚡</span>
+            <span class="maes-card-title">Actualización Rápida</span>
+          </div>
+          <div class="maes-card-body">
+            <div class="maes-inline-row">
+              <button class="maes-btn maes-btn-sm" id="btn-maes-rapido-select" onclick="maesMostrarMenuRapido()" style="flex:1;text-align:left;overflow:hidden;">Todos los maestros</button>
+              <button class="maes-btn maes-btn-sm maes-btn-primary" onclick="maesActualizarRapido()">🔄 Actualizar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: EESS Principal -->
+        <div class="maes-card">
+          <div class="maes-card-header">
+            <span class="maes-card-icon">🏥</span>
+            <span class="maes-card-title">EESS Principal</span>
+          </div>
+          <div class="maes-card-body">
+            <div class="maes-inline-row">
+              <button class="maes-btn maes-btn-sm maes-btn-teal" onclick="maesProcesarEESS()" style="flex:1;">▶️ Procesar EESS principal</button>
+              <button class="maes-btn maes-btn-sm maes-btn-edit" id="btn-maes-editar-eess" onclick="maesEditarScript('Procesar EESS principal','scripts_sql/scripst tabla y reportes vacunas-cred/EESS_PRINCIPAL_2026     moshe.sql')" style="display:none;">✏️</button>
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div class="tab-content" id="tab-maes-logs">
-        <div class="console" id="maes-logs-console"></div>
+
+      <!-- ===================== COLUMNA DERECHA ===================== -->
+      <div class="maes-right">
+
+        <!-- Card: Maestros en BD -->
+        <div class="maes-card">
+          <div class="maes-card-header">
+            <span class="maes-card-icon">🗃️</span>
+            <span class="maes-card-title">Maestros en PostgreSQL</span>
+            <span class="maes-badge" id="maes-bd-count">0</span>
+            <button class="maes-btn maes-btn-sm maes-btn-ghost" onclick="maesActualizarAmbos()" title="Actualizar lista">🔄</button>
+          </div>
+          <div class="maes-card-body" style="padding:0;">
+            <div class="maes-bd-list" id="maes-bd-list">
+              <div class="maes-empty">Presiona "Actualizar lista"</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card colapsable: HIS Proceso -->
+        <div class="maes-card maes-collapse">
+          <div class="maes-card-header maes-collapse-toggle" onclick="maesToggleCollapse(this)">
+            <span class="maes-card-icon">⚙️</span>
+            <span class="maes-card-title">HIS Proceso</span>
+            <span class="maes-collapse-arrow">▼</span>
+          </div>
+          <div class="maes-card-body maes-collapse-body">
+            <div class="maes-form-row">
+              <label class="maes-label">Año:</label>
+              <select class="maes-select" id="maes-anio"><option>2021</option><option>2022</option><option>2023</option><option selected>2024</option><option>2025</option><option>2026</option></select>
+              <label class="maes-label" style="margin-left:8px;">Mes:</label>
+              <select class="maes-select" id="maes-mes"><option selected>Todos</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select>
+            </div>
+            <div class="maes-inline-row">
+              <button class="maes-btn maes-btn-sm maes-btn-green" onclick="maesGenerarHISProceso()" style="flex:1;">⚙️ Generar HIS Proceso</button>
+              <button class="maes-btn maes-btn-sm maes-btn-edit" id="btn-maes-editar-his2" onclick="maesEditarScript('Generar HIS Proceso','scripts_sql/reportes/generar_his_proceso_editor.sql')" style="display:none;">✏️</button>
+            </div>
+            <div class="maes-form-row" style="margin-top:8px;">
+              <label class="maes-label" style="color:var(--text-muted);">Refrescar:</label>
+              <select class="maes-select" id="maes-refresco-his" style="flex:1;">
+                <option value="todos">todos</option>
+                <option value="maestro_paciente">maestro_paciente</option>
+                <option value="maestro_personal">maestro_personal</option>
+              </select>
+              <button class="maes-btn maes-btn-sm maes-btn-teal" onclick="maesRefrescarHISProceso()">♻️ Actualizar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card colapsable: Zona de Peligro -->
+        <div class="maes-card maes-collapse maes-card-danger">
+          <div class="maes-card-header maes-collapse-toggle" onclick="maesToggleCollapse(this)">
+            <span class="maes-card-icon">⚠️</span>
+            <span class="maes-card-title">Zona de Peligro</span>
+            <span class="maes-collapse-arrow">▼</span>
+          </div>
+          <div class="maes-card-body maes-collapse-body">
+            <div class="maes-del-list" id="maes-del-list">
+              <div class="maes-empty">No hay tablas maestras</div>
+            </div>
+            <div class="maes-inline-row" style="margin-top:6px;">
+              <button class="maes-btn maes-btn-sm maes-btn-outline" onclick="maesSeleccionarTodosDel()">☑ Selec. todos</button>
+              <button class="maes-btn maes-btn-sm maes-btn-danger" onclick="maesEliminarSeleccionados()">🗑️ Eliminar seleccionados</button>
+            </div>
+            <button class="maes-btn maes-btn-sm maes-btn-danger" onclick="maesEliminarTodos()" style="width:100%;margin-top:6px;background:#92241D;">⚠️ Eliminar TODOS los maestros</button>
+          </div>
+        </div>
+
+        <!-- Card: Progreso y Salida -->
+        <div class="maes-card">
+          <div class="maes-card-header">
+            <span class="maes-card-icon">📊</span>
+            <span class="maes-card-title">Progreso</span>
+          </div>
+          <div class="maes-card-body">
+            <div class="maes-progress-label" id="maes-progress-label">En espera</div>
+            <div class="maes-progress-track"><div class="maes-progress-fill" id="maes-progress-bar" style="width:0%;"></div></div>
+            <div class="maes-eta-label" id="maes-eta-label">ETA: --:--</div>
+            <div class="maes-console" id="maes-console"><div style="color:var(--text-muted);padding:8px;">Log de operaciones...</div></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
 </div>
+
+  <!-- ===== MODULE: PADRON / POBLACION ===== -->
+  <div class="module" id="module-poblacion">
+    <div class="sidebar">
+      <h2 style="font-size:16px;margin-bottom:8px;">👥 Padrón / Población</h2>
+      <div class="tabs" style="margin-bottom:8px;">
+        <button class="tab-btn active" data-tab-pob="pn" onclick="pobSwitchTab('pn')">👶 Padrón Nominal</button>
+        <button class="tab-btn" data-tab-pob="cnv" onclick="pobSwitchTab('cnv')">📋 CNV</button>
+      </div>
+      <div id="pob-pn-section">
+        <div id="pn-status-area">
+          <div class="status-indicator warning" id="pn-status">
+            <span class="status-dot warning"></span> <span id="pn-status-text">Verificando...</span>
+          </div>
+        </div>
+        <button class="sidebar-btn" style="background:#27AE60;color:#fff;" id="btn-pn-cargar" onclick="pnCargar()">📥 Cargar Padrón Nominal</button>
+        <h3 style="margin-top:12px;">Buscar</h3>
+        <input class="form-input" id="pn-busqueda" placeholder="Nombre, apellido o DNI madre..." onkeydown="if(event.key==='Enter')pnConsultar(1)">
+        <button class="sidebar-btn" style="background:#3498DB;color:#fff;" onclick="pnConsultar(1)">🔍 Buscar</button>
+        <div id="pn-paginacion" style="font-size:12px;margin-top:8px;display:none;">
+          <button class="sidebar-btn" style="background:#555;color:#fff;width:auto;" id="pn-prev" onclick="pnCambiarPag(-1)">◀ Anterior</button>
+          <span id="pn-page-info" style="margin:0 8px;">Página 1</span>
+          <button class="sidebar-btn" style="background:#555;color:#fff;width:auto;" id="pn-next" onclick="pnCambiarPag(1)">Siguiente ▶</button>
+        </div>
+      </div>
+      <div id="pob-cnv-section" style="display:none;">
+        <div id="cnv-status-area">
+          <div class="status-indicator warning" id="cnv-status">
+            <span class="status-dot warning"></span> <span id="cnv-status-text">Verificando...</span>
+          </div>
+        </div>
+        <button class="sidebar-btn" style="background:#27AE60;color:#fff;" id="btn-cnv-cargar" onclick="cnvCargar()">📥 Cargar CNV</button>
+        <h3 style="margin-top:12px;">Buscar</h3>
+        <input class="form-input" id="cnv-busqueda" placeholder="Nombre madre, DNI o NU_CNV..." onkeydown="if(event.key==='Enter')cnvConsultar(1)">
+        <button class="sidebar-btn" style="background:#3498DB;color:#fff;" onclick="cnvConsultar(1)">🔍 Buscar</button>
+        <div id="cnv-paginacion" style="font-size:12px;margin-top:8px;display:none;">
+          <button class="sidebar-btn" style="background:#555;color:#fff;width:auto;" id="cnv-prev" onclick="cnvCambiarPag(-1)">◀ Anterior</button>
+          <span id="cnv-page-info" style="margin:0 8px;">Página 1</span>
+          <button class="sidebar-btn" style="background:#555;color:#fff;width:auto;" id="cnv-next" onclick="cnvCambiarPag(1)">Siguiente ▶</button>
+        </div>
+      </div>
+    </div>
+    <div class="content-panel">
+      <h2 style="font-size:18px;font-weight:bold;" id="pob-title">Padrón Nominal</h2>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" id="pn-total-info">Cargue datos para visualizar</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:none;" id="cnv-total-info">Cargue datos para visualizar</div>
+      <div class="results-viewer" id="pn-resultados" style="max-height:70vh;overflow-y:auto;"></div>
+      <div class="results-viewer" id="cnv-resultados" style="max-height:70vh;overflow-y:auto;display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ===== MODULE: GEOLOCALIZACION ===== -->
+  <div class="module" id="module-mapa">
+    <div class="sidebar">
+      <h2 style="font-size:16px;margin-bottom:8px;">🗺️ Geolocalización</h2>
+      <div id="mapa-status-area">
+        <div class="status-indicator" id="mapa-status">
+          <span class="status-dot" id="mapa-status-dot"></span> <span id="mapa-status-text">Verificando datos geo...</span>
+        </div>
+      </div>
+      <h3 style="margin-top:12px;">Pacientes por Distrito</h3>
+      <div id="mapa-distritos" style="font-size:12px;max-height:200px;overflow-y:auto;"></div>
+      <h3 style="margin-top:12px;">Heatmap KDE</h3>
+      <button class="sidebar-btn" style="background:#E74C3C;color:#fff;" id="btn-mapa-kde" onclick="mapaKDE()">🔥 Generar KDE</button>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="mapa-kde-info"></div>
+    </div>
+    <div class="content-panel" style="padding:0;">
+      <div id="mapa-container" style="width:100%;height:80vh;"></div>
+    </div>
+  </div>
+
+  <!-- ===== MODULE: DASHBOARDS ===== -->
+  <div class="module" id="module-dashboards">
+    <div class="sidebar">
+      <h2 style="font-size:16px;margin-bottom:8px;">📈 Dashboards</h2>
+      <div id="dash-status-area">
+        <div class="status-indicator" id="dash-status">
+          <span class="status-dot" id="dash-status-dot"></span> <span id="dash-status-text">Cargando resumen...</span>
+        </div>
+      </div>
+      <h3 style="margin-top:12px;">Vistas</h3>
+      <button class="sidebar-btn" style="background:#2ECC71;color:#fff;" onclick="dashMostrar('resumen')" id="dash-btn-resumen">📊 Resumen General</button>
+      <button class="sidebar-btn" style="background:#3498DB;color:#fff;" onclick="dashMostrar('mapa')">🗺️ Mapa de Pacientes</button>
+    </div>
+    <div class="content-panel">
+      <h2 style="font-size:18px;font-weight:bold;">Resumen del Sistema</h2>
+      <div id="dash-contenido" style="padding:16px 0;">
+        <p style="color:var(--text-muted);">Cargando indicadores...</p>
+      </div>
+    </div>
+  </div>
 
 <!-- ===== GLOBAL BOTTOM BAR ===== -->
 <div class="global-bar" id="global-bar">
@@ -285,6 +505,39 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-import-opciones">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header"><h2>📊 Datos existentes detectados</h2></div>
+    <div class="modal-body" id="modal-import-body">
+      <p style="margin-bottom:12px;color:var(--text-muted);">El año <strong id="imp-opt-anio">2024</strong> ya tiene datos en la base de datos.</p>
+      <p style="margin-bottom:16px;color:var(--text-muted);">¿Cómo deseas proceder?</p>
+      <button class="sidebar-btn" style="background:#E67E22;color:#fff;width:100%;margin-bottom:8px;padding:12px;" id="imp-opt-reemplazar">
+        🔄 Reemplazar todo
+        <div style="font-size:11px;opacity:0.8;font-weight:normal;">Borra los datos existentes e importa todo de nuevo</div>
+      </button>
+      <button class="sidebar-btn" style="background:#27AE60;color:#fff;width:100%;margin-bottom:8px;padding:12px;" id="imp-opt-completar">
+        ➕ Solo agregar faltantes
+        <div style="font-size:11px;opacity:0.8;font-weight:normal;">Importa solo los meses que aún no tienen datos</div>
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="sidebar-btn" onclick="closeModal('modal-import-opciones')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: MAESTRO MENU ===== -->
+<div class="modal-overlay" id="modal-maes-menu">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header"><h2 id="maes-menu-title">Seleccionar maestros</h2><button class="modal-close" onclick="closeModal('modal-maes-menu')">&times;</button></div>
+    <div class="modal-body" id="maes-menu-body" style="max-height:300px;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="sidebar-btn" onclick="closeModal('modal-maes-menu')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/js/app.js"></script>
+<script src="/static/js/modules.js"></script>
 </body>
 </html>

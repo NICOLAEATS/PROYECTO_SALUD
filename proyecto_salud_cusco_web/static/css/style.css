@@ -577,58 +577,208 @@ body {
     color: #212529;
 }
 
-/* ============ MAESTROS ============ */
-.maestros-frame {
-    flex: 1;
-    min-height: 0;
+/* ============ MAESTROS (Rediseñado) ============ */
+.maes-container {
+    flex: 1; min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 14px;
+    overflow: auto;
+}
+.maes-left, .maes-right {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 0;
 }
-
-.maestros-toolbar {
+/* === Card base === */
+.maes-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+.maes-card-header {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
 }
-
-.maestros-tree {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
+.maes-card-icon { font-size: 15px; }
+.maes-card-title { font-size: 13px; font-weight: 700; flex: 1; }
+.maes-card-body { padding: 10px 14px; }
+.maes-card-body:last-child { border-bottom: none; }
+.maes-card-danger .maes-card-header { background: rgba(231,76,60,0.08); }
+.maes-card-danger { border-color: rgba(231,76,60,0.3); }
+/* === Badge === */
+.maes-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--bg-active);
+    color: var(--text-primary);
+    padding: 2px 7px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+/* === Empty state === */
+.maes-empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 16px;
+    font-size: 12px;
+}
+/* === Folder selector === */
+.maes-ruta-frame {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-input);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+}
+.maes-ruta-label {
+    flex: 1; font-size: 11px; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* === CSV list === */
+.maes-csv-list {
+    max-height: 170px;
+    overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-}
-
-.maestros-tree table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.maestros-tree th {
-    background: var(--bg-nav);
-    color: var(--text-secondary);
-    padding: 8px 10px;
-    text-align: left;
-    font-weight: 600;
+    background: var(--bg-input);
+    padding: 4px;
     font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    position: sticky;
-    top: 0;
+    margin-bottom: 8px;
 }
-
-.maestros-tree td {
-    padding: 6px 10px;
+.maes-csv-list label {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 6px; cursor: pointer; border-radius: 3px;
+}
+.maes-csv-list label:hover { background: var(--bg-hover); }
+.maes-csv-list input[type="checkbox"] { margin: 0; accent-color: var(--accent); }
+.maes-csv-actions { display: flex; gap: 6px; }
+/* === BD list === */
+.maes-bd-list {
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px;
+}
+.maes-bd-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 14px;
     border-bottom: 1px solid var(--border);
+    transition: background .15s;
 }
-
-.maestros-tree tr:hover { background: var(--bg-hover); }
-
-.maestros-tree .status-active { color: var(--success); }
-.maestros-tree .status-inactive { color: var(--danger); }
+.maes-bd-item:last-child { border-bottom: none; }
+.maes-bd-item:hover { background: var(--bg-hover); }
+.maes-bd-item-info { flex: 1; min-width: 0; }
+.maes-bd-item-name { font-weight: 600; font-size: 12px; }
+.maes-bd-item-desc { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.maes-bd-item-status {
+    font-size: 9px; color: var(--success); font-weight: 700;
+    white-space: nowrap; padding-top: 2px;
+}
+/* === Delete list === */
+.maes-del-list {
+    max-height: 100px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    padding: 4px;
+    font-size: 11px;
+}
+.maes-del-list label {
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 6px; cursor: pointer; border-radius: 3px;
+}
+.maes-del-list label:hover { background: var(--bg-hover); }
+.maes-del-list input[type="checkbox"] { margin: 0; accent-color: #E74C3C; }
+/* === Inline row === */
+.maes-inline-row { display: flex; gap: 6px; align-items: center; }
+.maes-form-row { display: flex; gap: 6px; align-items: center; }
+.maes-label { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+.maes-select {
+    font-size: 12px; padding: 4px 6px;
+    background: var(--bg-input); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    outline: none;
+}
+.maes-select:focus { border-color: var(--accent); }
+/* === Buttons === */
+.maes-btn {
+    font-size: 12px; padding: 6px 12px;
+    border: none; border-radius: var(--radius);
+    background: var(--bg-active); color: var(--text-primary);
+    cursor: pointer; white-space: nowrap;
+    transition: filter .15s, background .15s;
+}
+.maes-btn:hover { filter: brightness(1.15); }
+.maes-btn-sm { font-size: 11px; padding: 5px 10px; }
+.maes-btn-primary { background: #1f538d; }
+.maes-btn-teal { background: #0E6655; }
+.maes-btn-green { background: #27AE60; font-weight: 600; }
+.maes-btn-danger { background: #C0392B; }
+.maes-btn-edit { background: #34495E; width: 34px; padding: 5px 0; text-align: center; }
+.maes-btn-ghost { background: transparent; }
+.maes-btn-ghost:hover { background: var(--bg-hover); }
+.maes-btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+}
+.maes-btn-outline:hover { background: var(--bg-hover); }
+/* === Collapse === */
+.maes-collapse-toggle { cursor: pointer; }
+.maes-collapse-toggle:hover { filter: brightness(1.1); }
+.maes-collapse-arrow {
+    font-size: 10px; color: var(--text-muted);
+    transition: transform .2s;
+}
+.maes-collapse.open .maes-collapse-arrow { transform: rotate(180deg); }
+.maes-collapse.open .maes-collapse-body { display: block; }
+.maes-collapse .maes-collapse-body { display: none; }
+/* === Progress === */
+.maes-progress-label {
+    font-size: 11px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 6px;
+}
+.maes-progress-track {
+    height: 8px; background: var(--bg-input);
+    border-radius: 4px; overflow: hidden;
+    border: 1px solid var(--border);
+}
+.maes-progress-fill {
+    height: 100%; background: linear-gradient(90deg,var(--accent),#2ECC71);
+    border-radius: 4px; transition: width .3s;
+}
+.maes-eta-label {
+    font-size: 10px; color: var(--text-muted); margin-top: 4px;
+}
+/* === Console === */
+.maes-console {
+    max-height: 100px;
+    overflow-y: auto;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 8px;
+}
+.maes-console div { padding: 2px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.maes-console div:last-child { border-bottom: none; }
+.maes-console .log-info { color: var(--text-secondary); }
+.maes-console .log-error { color: #E74C3C; }
+.maes-console .log-success { color: #2ECC71; }
 
 /* ============ EDITOR SCRIPT LIST ============ */
 .script-list {
@@ -714,6 +864,32 @@ body {
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
+}
+
+/* ============ DATA TABLE ============ */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.data-table th {
+    background: var(--bg-input);
+    text-align: left;
+    padding: 6px 8px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: 2px solid var(--border);
+}
+.data-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+.data-table tr:hover {
+    background: rgba(255,255,255,0.03);
+}
+[data-theme="light"] .data-table tr:hover {
+    background: rgba(0,0,0,0.03);
 }
 
 /* ============ RESPONSIVE ============ */

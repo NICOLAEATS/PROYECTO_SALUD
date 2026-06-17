@@ -1,16 +1,18 @@
-import sys
-import os
-import json
-import threading
-import subprocess
-import time
+import sys, os, json, threading, subprocess, time, platform
 from pathlib import Path
+from typing import Optional
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
+
+if platform.system() == 'Windows':
+    CREATE_NO_WINDOW = 0x08000000
+else:
+    CREATE_NO_WINDOW = 0
 from config import (
     BASE_DIR, PROJECT_ROOT, SCRIPTS_INGESTA, SCRIPTS_BI,
     SCRIPTS_MANTENIMIENTO, SCRIPTS_INSTALACION, SCRIPTS_SQL_REPORTES,
-    SCRIPTS_SQL_VACUNAS, BOTONES_REPORTE_PREDETERMINADOS,
+    SCRIPTS_SQL_VACUNAS, SCRIPTS_PADRONES, SCRIPTS_BI_LOAD,
+    BOTONES_REPORTE_PREDETERMINADOS,
     SCRIPTS_MAESTROS_EDITABLES, EDITOR_BUTTONS_FILE
 )
 
@@ -139,13 +141,18 @@ def ejecutar_script(ruta_script, args=None, mostrar_progreso=False):
         try:
             _append_line(token, f"Iniciando: {' '.join(comando)}")
 
+            env = os.environ.copy()
+            env["PYTHONUTF8"] = "1"
+
             proc = subprocess.Popen(
                 comando,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=env,
+                creationflags=CREATE_NO_WINDOW,
             )
 
             with _active_process_lock:
@@ -379,23 +386,88 @@ def ejecucion_cancel():
     return jsonify({'mensaje': 'Proceso cancelado'})
 
 # ==================== INGESTA ====================
+def _meses_con_datos(anio):
+    """Retorna lista de meses (int) que ya tienen datos en BD para el año."""
+    try:
+        from db_config import get_db_config
+        import psycopg2
+        cfg = get_db_config()
+        conn = psycopg2.connect(
+            dbname=cfg.database, user=cfg.user, password=cfg.password,
+            host=cfg.host, port=cfg.port, connect_timeout=5
+        )
+        cur = conn.cursor()
+        cur.execute(f"SELECT DISTINCT mes FROM {cfg.schema}.hisminsa24 WHERE anio = %s AND mes ~ '^[0-9]+$'", (anio,))
+        meses = sorted(set(int(row[0]) for row in cur.fetchall() if row[0].isdigit()))
+        cur.close(); conn.close()
+        return meses
+    except Exception:
+        return []
+
+def _borrar_anio_bd(anio):
+    """Borra todos los registros de un año antes de importar."""
+    from db_config import get_db_config
+    import psycopg2
+    cfg = get_db_config()
+    conn = psycopg2.connect(
+        dbname=cfg.database, user=cfg.user, password=cfg.password,
+        host=cfg.host, port=cfg.port, connect_timeout=5
+    )
+    cur = conn.cursor()
+    cur.execute(f"DELETE FROM {cfg.schema}.hisminsa24 WHERE anio = %s", (anio,))
+    borrados = cur.rowcount
+    conn.commit()
+    cur.close(); conn.close()
+    return borrados
+
+@app.route('/api/ingesta/check', methods=['POST'])
+def ingesta_check():
+    """Verifica qué meses del año ya tienen datos en BD."""
+    data = request.json
+    anio = data.get('anio', '2024')
+    meses_bd = _meses_con_datos(anio)
+    return jsonify({'anio': anio, 'meses_con_datos': meses_bd, 'tiene_datos': len(meses_bd) > 0})
+
 @app.route('/api/ingesta/import', methods=['POST'])
 def ingesta_import():
     data = request.json
     anio = data.get('anio', '2024')
     meses = data.get('meses', [])
     ruta_crudos = data.get('ruta_crudos', '')
+    modo = data.get('modo', 'reemplazar')  # 'reemplazar' o 'completar'
+
+    # Si modo es completar, filtrar meses que ya tienen datos
+    if modo == 'completar':
+        meses_bd = _meses_con_datos(anio)
+        meses = [m for m in meses if m not in meses_bd]
+        if not meses:
+            return jsonify({'error': 'Todos los meses ya tienen datos', 'skip': True}), 200
+
+    # Si modo es reemplazar, borrar datos del año antes de importar
+    if modo == 'reemplazar':
+        try:
+            borrados = _borrar_anio_bd(anio)
+        except Exception:
+            pass  # si falla el borrado, el script internamente limpia mes x mes
+
+    # Igual que el desktop: si hay ruta personalizada,
+    # primero prueba ruta/anio, si no existe usa ruta tal cual
+    if ruta_crudos:
+        carpeta_con_anio = os.path.join(ruta_crudos, anio)
+        ruta_final = carpeta_con_anio if os.path.isdir(carpeta_con_anio) else ruta_crudos
+    else:
+        ruta_final = ''
 
     if not meses or len(meses) == 12:
         script = str(SCRIPTS_INGESTA / '01cargacvs_universal.py')
         args = [anio]
+        if ruta_final:
+            args.append(ruta_final)
     else:
         script = str(SCRIPTS_INGESTA / '01cargacvs_mensual.py')
         args = [anio] + [str(m) for m in meses]
-
-    env = os.environ.copy()
-    if ruta_crudos:
-        env['RUTA_CRUDOS'] = ruta_crudos
+        if ruta_final:
+            args.append(ruta_final)
 
     return jsonify(ejecutar_script(script, args=args, mostrar_progreso=True))
 
@@ -526,8 +598,353 @@ def maestros_tablas():
 def maestros_ejecutar():
     data = request.json
     script = data.get('script', '')
+    args = data.get('args', [])
     ruta = str(PROJECT_ROOT / script)
-    return jsonify(ejecutar_script(ruta, mostrar_progreso=True))
+    return jsonify(ejecutar_script(ruta, args=args, mostrar_progreso=True))
+
+@app.route('/api/maestros/csv-list', methods=['POST'])
+def maestros_csv_list():
+    data = request.json
+    folder = data.get('folder', '')
+    if not folder or not os.path.isdir(folder):
+        return jsonify({'error': 'Carpeta inválida'}), 400
+    try:
+        csvs = sorted([f for f in os.listdir(folder) if f.lower().endswith('.csv')])
+        return jsonify({'csvs': csvs, 'folder': folder})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/maestros/eliminar', methods=['POST'])
+def maestros_eliminar():
+    data = request.json
+    tablas = data.get('tablas', [])
+    if not tablas:
+        return jsonify({'error': 'No se especificaron tablas'}), 400
+    try:
+        import psycopg2
+        from db_config import get_db_config
+        cfg = get_db_config()
+        conn = psycopg2.connect(host=cfg.host, port=cfg.port, user=cfg.user, password=cfg.password, dbname=cfg.database)
+        cur = conn.cursor()
+        resultados = []
+        for t in tablas:
+            try:
+                cur.execute(f'DROP TABLE IF EXISTS "{cfg.schema}"."{t}" CASCADE;')
+                conn.commit()
+                resultados.append({'tabla': t, 'ok': True})
+            except Exception as e:
+                resultados.append({'tabla': t, 'ok': False, 'error': str(e)})
+        cur.close()
+        conn.close()
+        return jsonify({'resultados': resultados})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/maestros/eliminar-todos', methods=['POST'])
+def maestros_eliminar_todos():
+    try:
+        import psycopg2
+        from db_config import get_db_config
+        cfg = get_db_config()
+        conn = psycopg2.connect(host=cfg.host, port=cfg.port, user=cfg.user, password=cfg.password, dbname=cfg.database)
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = '{cfg.schema}'
+            AND (table_name LIKE 'maestro%%' OR table_name = 'eess2025' OR table_name LIKE '%%susalud%%')
+        """)
+        tablas = [r[0] for r in cur.fetchall()]
+        for t in tablas:
+            cur.execute(f'DROP TABLE IF EXISTS "{cfg.schema}"."{t}" CASCADE;')
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'ok': True, 'eliminadas': len(tablas)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/maestros/descriptions', methods=['GET'])
+def maestros_descriptions():
+    descs = {
+        "maestro_paciente": "Paciente (DNI, nombre, fecha nac., género, etnia)",
+        "maestro_personal": "Personal de salud (colegio profesional)",
+        "eess2025": "Establecimiento (red, microred, provincia, distrito)",
+        "maestro_his_establecimiento": "Establecimientos crudos HIS (fuente para reconstruir eess2025)",
+        "maestro_his_cie_cpms": "Diagnósticos CIE / Procedimientos CPT",
+        "maestro_his_etnia": "Etnias (descripción)",
+        "maestro_his_ups": "Unidades Productoras de Servicios (UPS)",
+        "maestro_his_colegio": "Colegios profesionales",
+        "maestro_his_actividad": "Actividades HIS",
+        "maestro_his_centro_poblado": "Centros poblados",
+        "maestro_his_condicion_contrato": "Condición de contrato del personal",
+        "maestro_his_dosis": "Dosis de vacunas",
+        "maestro_his_financiador": "Financiadores (SIS, ESSALUD, etc.)",
+        "maestro_his_gruporiesgo_lab": "Grupos de riesgo (lab)",
+        "maestro_his_institucion_edu": "Instituciones educativas",
+        "maestro_his_lab": "Laboratorio (parámetros)",
+        "maestro_his_otra_condicion": "Otra condición clínica",
+        "maestro_his_pais": "Países (código y nombre)",
+        "maestro_his_profesion": "Profesiones del personal",
+        "maestro_his_sistema": "Sistemas de salud",
+        "maestro_his_tipo_doc": "Tipos de documento de identidad",
+        "maestro_his_ubigeo": "Ubigeos INEI / RENIEC",
+        "maestro_his_susalud": "SUSALUD (establecimientos supervisados)",
+        "maestro_eess_susalud": "SUSALUD crudo (fuente para reconstruir eess2025)",
+    }
+    return jsonify(descs)
+
+# ==================== PADRON NOMINAL ====================
+def _db_cursor():
+    from db_config import get_db_config
+    import psycopg2
+    cfg = get_db_config()
+    conn = psycopg2.connect(host=cfg.host, port=cfg.port, user=cfg.user, password=cfg.password, dbname=cfg.database)
+    return conn
+
+def _tabla_existe(nombre_tabla):
+    try:
+        conn = _db_cursor()
+        cur = conn.cursor()
+        from db_config import get_db_config
+        cfg = get_db_config()
+        cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=%s AND table_name=%s)", (cfg.schema, nombre_tabla))
+        res = cur.fetchone()[0]
+        cur.close(); conn.close()
+        return res
+    except:
+        return False
+
+@app.route('/api/padron/status', methods=['GET'])
+def padron_status():
+    existe = _tabla_existe('padron_nominal')
+    total = 0
+    if existe:
+        try:
+            conn = _db_cursor()
+            cur = conn.cursor()
+            from db_config import get_db_config
+            cfg = get_db_config()
+            cur.execute(f"SELECT COUNT(*) FROM {cfg.schema}.padron_nominal")
+            total = cur.fetchone()[0]
+            cur.close(); conn.close()
+        except:
+            pass
+    return jsonify({'existe': existe, 'total': total})
+
+@app.route('/api/padron/cargar', methods=['POST'])
+def padron_cargar():
+    script = str(SCRIPTS_BI / 'cargar_padron_nominal.py')
+    return jsonify(ejecutar_script(script, mostrar_progreso=True))
+
+@app.route('/api/padron/consulta', methods=['POST'])
+def padron_consulta():
+    data = request.json
+    pagina = data.get('pagina', 1)
+    por_pagina = data.get('por_pagina', 50)
+    busqueda = data.get('busqueda', '')
+    offset = (pagina - 1) * por_pagina
+
+    try:
+        conn = _db_cursor()
+        cur = conn.cursor()
+        from db_config import get_db_config
+        cfg = get_db_config()
+        tabla = f"{cfg.schema}.padron_nominal"
+
+        if busqueda:
+            filtro = f"WHERE (nombre_nino ILIKE %s OR apellido_pat_nino ILIKE %s OR apellido_mat_nino ILIKE %s OR doc_madre ILIKE %s)"
+            param = f'%{busqueda}%'
+            params = [param, param, param, param]
+            cur.execute(f"SELECT COUNT(*) FROM {tabla} {filtro}", params)
+            total = cur.fetchone()[0]
+            cur.execute(f"SELECT * FROM {tabla} {filtro} ORDER BY anio DESC, nro LIMIT %s OFFSET %s", params + [por_pagina, offset])
+        else:
+            cur.execute(f"SELECT COUNT(*) FROM {tabla}")
+            total = cur.fetchone()[0]
+            cur.execute(f"SELECT * FROM {tabla} ORDER BY anio DESC, nro LIMIT %s OFFSET %s", [por_pagina, offset])
+
+        cols = [desc[0] for desc in cur.description]
+        filas = [dict(zip(cols, row)) for row in cur.fetchall()]
+        cur.close(); conn.close()
+        return jsonify({'filas': filas, 'total': total, 'pagina': pagina, 'por_pagina': por_pagina})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/padron/geojson', methods=['GET'])
+def padron_geojson():
+    try:
+        conn = _db_cursor()
+        cur = conn.cursor()
+        from db_config import get_db_config
+        cfg = get_db_config()
+        cur.execute(f"""
+            SELECT latitud, longitud, nombre_nino, apellido_pat_nino,
+                   apellido_mat_nino, direccion, dist_nino, ubigeo_pn
+            FROM {cfg.schema}.padron_nominal
+            WHERE latitud IS NOT NULL AND longitud IS NOT NULL
+            AND latitud BETWEEN -14 AND -12
+            AND longitud BETWEEN -73 AND -70
+            LIMIT 5000
+        """)
+        features = []
+        for row in cur.fetchall():
+            lat, lng, nombre, apat, amat, dir, dist, ubigeo = row
+            if lat and lng:
+                features.append({
+                    'type': 'Feature',
+                    'geometry': {'type': 'Point', 'coordinates': [lng, lat]},
+                    'properties': {
+                        'nombre': f"{nombre or ''} {apat or ''} {amat or ''}",
+                        'direccion': dir or '',
+                        'distrito': dist or '',
+                        'ubigeo': ubigeo or '',
+                    }
+                })
+        cur.close(); conn.close()
+        return jsonify({'type': 'FeatureCollection', 'features': features})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== CNV ====================
+@app.route('/api/cnv/status', methods=['GET'])
+def cnv_status():
+    existe = _tabla_existe('cnv_cusco')
+    total = 0
+    if existe:
+        try:
+            conn = _db_cursor()
+            cur = conn.cursor()
+            from db_config import get_db_config
+            cfg = get_db_config()
+            cur.execute(f"SELECT COUNT(*) FROM {cfg.schema}.cnv_cusco")
+            total = cur.fetchone()[0]
+            cur.close(); conn.close()
+        except:
+            pass
+    return jsonify({'existe': existe, 'total': total})
+
+@app.route('/api/cnv/cargar', methods=['POST'])
+def cnv_cargar():
+    script = str(SCRIPTS_BI / 'cargar_cnv.py')
+    return jsonify(ejecutar_script(script, mostrar_progreso=True))
+
+@app.route('/api/cnv/consulta', methods=['POST'])
+def cnv_consulta():
+    data = request.json
+    pagina = data.get('pagina', 1)
+    por_pagina = data.get('por_pagina', 50)
+    busqueda = data.get('busqueda', '')
+    offset = (pagina - 1) * por_pagina
+
+    try:
+        conn = _db_cursor()
+        cur = conn.cursor()
+        from db_config import get_db_config
+        cfg = get_db_config()
+        tabla = f"{cfg.schema}.cnv_cusco"
+
+        if busqueda:
+            filtro = "WHERE (pri_ape_madre ILIKE %s OR seg_ape_madre ILIKE %s OR prenom_madre ILIKE %s OR nu_doc_madre ILIKE %s OR nu_cnv ILIKE %s)"
+            param = f'%{busqueda}%'
+            params = [param]*5
+            cur.execute(f"SELECT COUNT(*) FROM {tabla} {filtro}", params)
+            total = cur.fetchone()[0]
+            cur.execute(f"SELECT * FROM {tabla} {filtro} ORDER BY fe_crea DESC LIMIT %s OFFSET %s", params + [por_pagina, offset])
+        else:
+            cur.execute(f"SELECT COUNT(*) FROM {tabla}")
+            total = cur.fetchone()[0]
+            cur.execute(f"SELECT * FROM {tabla} ORDER BY fe_crea DESC LIMIT %s OFFSET %s", [por_pagina, offset])
+
+        cols = [desc[0] for desc in cur.description]
+        filas = [dict(zip(cols, row)) for row in cur.fetchall()]
+        cur.close(); conn.close()
+        return jsonify({'filas': filas, 'total': total, 'pagina': pagina, 'por_pagina': por_pagina})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== MAPA / GEOLOCALIZACION ====================
+@app.route('/api/mapa/kde', methods=['POST'])
+def mapa_kde():
+    """Genera datos KDE a partir de coordenadas del Padron Nominal + IRAS desde his_proceso."""
+    try:
+        data = request.json or {}
+        anio = data.get('anio', '2026')
+        microred = data.get('microred', '')
+
+        conn = _db_cursor()
+        cur = conn.cursor()
+        from db_config import get_db_config
+        cfg = get_db_config()
+
+        query = f"""
+            SELECT pn.latitud, pn.longitud
+            FROM {cfg.schema}.padron_nominal pn
+            WHERE pn.latitud IS NOT NULL AND pn.longitud IS NOT NULL
+            AND pn.latitud BETWEEN -14 AND -12
+            AND pn.longitud BETWEEN -73 AND -70
+        """
+
+        cur.execute(query)
+        coords = [(float(r[0]), float(r[1])) for r in cur.fetchall() if r[0] and r[1]]
+        cur.close(); conn.close()
+
+        if len(coords) < 5:
+            return jsonify({'error': 'Muy pocas coordenadas disponibles para KDE', 'coords_count': len(coords)}), 400
+
+        return jsonify({
+            'coords_count': len(coords),
+            'coordenadas': [[lat, lng] for lat, lng in coords[:2000]],
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/mapa/pacientes-por-distrito', methods=['GET'])
+def mapa_pacientes_por_distrito():
+    try:
+        conn = _db_cursor()
+        cur = conn.cursor()
+        from db_config import get_db_config
+        cfg = get_db_config()
+        cur.execute(f"""
+            SELECT dist_nino, COUNT(*) as total,
+                   COUNT(*) FILTER (WHERE latitud IS NOT NULL) as con_coord
+            FROM {cfg.schema}.padron_nominal
+            GROUP BY dist_nino
+            ORDER BY total DESC
+        """)
+        rows = [{'distrito': r[0], 'total': r[1], 'con_coord': r[2]} for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== DASHBOARDS ====================
+@app.route('/api/dashboards/resumen', methods=['GET'])
+def dashboards_resumen():
+    try:
+        conn = _db_cursor()
+        cur = conn.cursor()
+        from db_config import get_db_config
+        cfg = get_db_config()
+        esquema = cfg.schema
+
+        resumen = {}
+
+        for tabla, nombre in [('padron_nominal', 'Padron Nominal'),
+                              ('cnv_cusco', 'CNV'),
+                              ('tabla_vacunas', 'Vacunas'),
+                              ('tabla_materno', 'Materno'),
+                              ('tabla_iras_edas', 'IRAS/EDAS')]:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {esquema}.{tabla}")
+                resumen[nombre] = cur.fetchone()[0]
+            except:
+                resumen[nombre] = -1
+
+        cur.close(); conn.close()
+        return jsonify(resumen)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ==================== EDITOR ====================
 EDITOR_CREDENTIALS = {'usuario': 'ivan', 'password': 'ivanar'}
@@ -647,6 +1064,30 @@ def tunnel_status():
     global _tunnel_proc, _tunnel_url
     activo = _tunnel_proc is not None and _tunnel_proc.poll() is None
     return jsonify({'activo': activo, 'url': _tunnel_url if activo else ''})
+
+# ---------- Filesystem (native dialogs) ----------
+@app.route('/api/fs/select-folder', methods=['POST'])
+def fs_select_folder():
+    """Abre el dialogo nativo del SO en un proceso separado."""
+    try:
+        code = (
+            "import tkinter as tk; from tkinter import filedialog; "
+            "root = tk.Tk(); root.withdraw(); root.attributes('-topmost', True); "
+            "path = filedialog.askdirectory(title='Seleccionar carpeta de atenciones'); "
+            "root.destroy(); print(path, end='')"
+        )
+        result = subprocess.run(
+            [sys.executable, '-c', code],
+            capture_output=True, text=True, timeout=120
+        )
+        carpeta = result.stdout.strip()
+        if carpeta:
+            return jsonify({'path': carpeta})
+        return jsonify({'path': ''})
+    except subprocess.TimeoutExpired:
+        return jsonify({'path': '', 'error': 'timeout'}), 408
+    except Exception as e:
+        return jsonify({'path': '', 'error': str(e)}), 500
 
 # ---------- Main ----------
 if __name__ == '__main__':
