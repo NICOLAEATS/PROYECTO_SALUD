@@ -52,6 +52,7 @@ function switchModule(m){
     document.querySelectorAll('.module').forEach(x=>x.classList.remove('active'));
     const el=document.getElementById(`module-${m}`);
     if(el)el.classList.add('active');
+    if(m==='maestros')setTimeout(()=>maesActualizarAmbos(),300);
 }
 
 // ==================== THEME ====================
@@ -441,36 +442,34 @@ function reinstalarPG(){
 }
 
 // ==================== INGESTA ====================
-document.getElementById('btn-ing-carpeta').addEventListener('click',()=>{
-    const inp=document.createElement('input');inp.type='file';inp.webkitdirectory=true;
-    inp.onchange=e=>{
-        if(e.target.files.length>0){
-            const path=e.target.files[0].webkitRelativePath.split('/')[0];
-            document.getElementById('ing-lbl-ruta').textContent=`📁 Atenciones: .../${path}`;
+document.getElementById('btn-ing-carpeta').addEventListener('click',async()=>{
+    try{
+        const r=await fetch('/api/fs/select-folder',{method:'POST'});
+        const d=await r.json();
+        if(d.path){
+            S.rutaCrudos=d.path;
+            document.getElementById('ing-lbl-ruta').textContent=`📁 Atenciones: ${d.path}`;
             document.getElementById('ing-lbl-ruta').style.color='#2ECC71';
             toast('Carpeta seleccionada','info');
         }
-    };
-    inp.click();
+    }catch(e){
+        toast('Error al abrir selector de carpeta','error');
+    }
 });
 document.getElementById('btn-ing-ruta-auto').addEventListener('click',()=>{
+    S.rutaCrudos=null;
     document.getElementById('ing-lbl-ruta').textContent='📁 Atenciones: automática';
     document.getElementById('ing-lbl-ruta').style.color='var(--text-muted)';
     toast('Ruta automática','info');
 });
 
-document.getElementById('ing-btn-importar').addEventListener('click',()=>{
-    if(!S.bdOk){toast('BD no conectada','warning');return;}
-    const anio=document.getElementById('ing-anio').value;
-    const meses=S.meses;
+function iniciarImportacion(anio, meses, modo){
     const nombre=meses.length===12?`Importar HIS ${anio}`:`Importar ${anio} (${meses.length} meses)`;
-
     ingProgressReset(nombre);
     document.getElementById('ing-status').className='status-indicator warning';
     document.getElementById('ing-status-text').textContent=`Ejecutando ${nombre}...`;
-
     ejecutarConPolling(nombre,
-        fetch('/api/ingesta/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({anio,meses,ruta_crudos:S.rutaCrudos||''})}),
+        fetch('/api/ingesta/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({anio,meses,ruta_crudos:S.rutaCrudos||'',modo})}),
         logIng,
         {
             onProgress: (p) => {
@@ -488,6 +487,39 @@ document.getElementById('ing-btn-importar').addEventListener('click',()=>{
             },
         }
     );
+}
+
+document.getElementById('ing-btn-importar').addEventListener('click',async()=>{
+    if(!S.bdOk){toast('BD no conectada','warning');return;}
+    const anio=document.getElementById('ing-anio').value;
+    const meses=S.meses;
+    if(!meses.length){toast('Selecciona al menos un mes','warning');return;}
+
+    // Verificar si ya hay datos del año
+    try{
+        const r=await fetch('/api/ingesta/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({anio})});
+        const d=await r.json();
+        if(d.tiene_datos){
+            document.getElementById('imp-opt-anio').textContent=anio;
+            S._impPendiente={anio,meses};
+            openModal('modal-import-opciones');
+            return;
+        }
+    }catch(e){/* si falla la verificacion, continuar normalmente */}
+
+    iniciarImportacion(anio, meses, 'reemplazar');
+});
+
+document.getElementById('imp-opt-reemplazar').addEventListener('click',()=>{
+    closeModal('modal-import-opciones');
+    const {anio,meses}=S._impPendiente||{};
+    if(anio) iniciarImportacion(anio, meses||Array.from({length:12},(_,i)=>i+1), 'reemplazar');
+});
+
+document.getElementById('imp-opt-completar').addEventListener('click',()=>{
+    closeModal('modal-import-opciones');
+    const {anio,meses}=S._impPendiente||{};
+    if(anio) iniciarImportacion(anio, meses||Array.from({length:12},(_,i)=>i+1), 'completar');
 });
 
 document.getElementById('ing-btn-refrescar').addEventListener('click',()=>{
@@ -688,32 +720,421 @@ async function crearNuevoSQL(){
 }
 
 // ==================== MAESTROS ====================
-async function cargarMaestros(){
-    if(!S.bdOk){toast('BD no conectada','warning');return;}
-    const tbody=document.getElementById('maes-tbody');tbody.innerHTML='<tr><td colspan="3" style="text-align:center;">Cargando...</td></tr>';
-    try{
-        const r=await fetch('/api/maestros/tablas');const tablas=await r.json();
-        tbody.innerHTML='';
-        if(tablas.error){tbody.innerHTML=`<tr><td colspan="3" style="color:#E74C3C;">${tablas.error}</td></tr>`;return;}
-        if(!tablas.length){tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No hay tablas en el esquema</td></tr>';return;}
-        tablas.forEach(t=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${t.nombre}</td><td>${t.esquema}</td><td class="status-active">✅ Activo</td>`;tbody.appendChild(tr)});
-    }catch(e){tbody.innerHTML=`<tr><td colspan="3" style="color:#E74C3C;">${e.message}</td></tr>`}
+S.maes = {
+    ruta: null,
+    csvChecks: {},
+    csvTodos: true,
+    disponiblesRapido: [],
+    estadoRapido: {},
+    todosRapido: true,
+    delChecks: {},
+};
+
+function maesLog(msg, cls){
+    const c=document.getElementById('maes-console');
+    if(!c)return;
+    if(c.children.length===1 && c.children[0].textContent.includes('Log de operaciones')){
+        c.innerHTML='';
+    }
+    const d=document.createElement('div');
+    if(cls)d.className=cls;
+    else if(msg.startsWith('✅')||msg.startsWith('✔')) d.className='log-success';
+    else if(msg.startsWith('❌')||msg.startsWith('✖')) d.className='log-error';
+    d.textContent=msg;
+    c.appendChild(d);
+    c.scrollTop=c.scrollHeight;
 }
 
-document.getElementById('maes-filtro').addEventListener('input',function(){
-    const q=this.value.toLowerCase();
-    document.querySelectorAll('#maes-tbody tr').forEach(tr=>{tr.style.display=tr.textContent.toLowerCase().includes(q)?'':'none'});
-});
+function maesToggleCollapse(header){
+    const card=header.closest('.maes-collapse');
+    if(card)card.classList.toggle('open');
+}
 
-function ejecutarScript(ruta){
+async function maesSeleccionarCarpeta(){
+    const r=await fetch('/api/fs/select-folder',{method:'POST'});
+    const d=await r.json();
+    if(d.path){
+        S.maes.ruta=d.path;
+        document.getElementById('maes-ruta-text').textContent='📁 .../'+d.path.split('\\').pop().split('/').pop();
+        document.getElementById('maes-ruta-text').style.color='#2ECC71';
+        await maesListarCSVs(d.path);
+    }
+}
+
+async function maesListarCSVs(folder){
+    const r=await fetch('/api/maestros/csv-list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder})});
+    const d=await r.json();
+    const container=document.getElementById('maes-csv-list');
+    const badge=document.getElementById('maes-csv-count');
+    if(d.error){container.innerHTML=`<div class="maes-empty" style="color:#E74C3C;">${d.error}</div>`;if(badge)badge.textContent='!';return;}
+    container.innerHTML='';
+    if(!d.csvs.length){
+        container.innerHTML='<div class="maes-empty">No hay archivos CSV en esta carpeta</div>';
+        if(badge)badge.textContent='0';
+        return;
+    }
+    S.maes.csvChecks={};
+    if(badge)badge.textContent=d.csvs.length;
+    d.csvs.forEach(f=>{
+        S.maes.csvChecks[f]=true;
+        const label=document.createElement('label');
+        const cb=document.createElement('input');
+        cb.type='checkbox';cb.checked=true;
+        cb.addEventListener('change',()=>{S.maes.csvChecks[f]=cb.checked;});
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' '+f));
+        container.appendChild(label);
+    });
+}
+
+function maesSeleccionarTodosCSV(){
+    const all=Object.keys(S.maes.csvChecks);
+    if(!all.length)return;
+    const someOff=all.some(f=>!S.maes.csvChecks[f]);
+    const val=someOff;
+    S.maes.csvChecks={};
+    document.querySelectorAll('#maes-csv-list input[type="checkbox"]').forEach(cb=>{cb.checked=val;});
+    all.forEach(f=>{S.maes.csvChecks[f]=val;});
+}
+
+function maesGetSelectedCSVs(){
+    return Object.keys(S.maes.csvChecks).filter(f=>S.maes.csvChecks[f]);
+}
+
+async function maesCargarSeleccionados(){
     if(!S.bdOk){toast('BD no conectada','warning');return;}
-    const nombre=ruta.split('/').pop().replace('.py','');
-    logMaes(`▶️ Ejecutando ${nombre}...`,'log-info');
+    if(!S.maes.ruta){toast('Selecciona una carpeta primero','warning');return;}
+    const selec=maesGetSelectedCSVs();
+    if(!selec.length){toast('Ningún archivo seleccionado','warning');return;}
+    maesLog(`📄 Cargando ${selec.length} archivo(s) de maestros...`);
+    const r=await fetch('/api/maestros/ejecutar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        script:'scripts_python/ingesta/cargar_maestros.py',
+        args:[S.maes.ruta, '--archivos', ...selec]
+    })});
+    const d=await r.json();
+    if(!r.ok){maesLog(`❌ Error: ${d.error||r.statusText}`);toast('Error al cargar','error');return;}
+    maesLog('✅ Carga iniciada. Esperando resultados...');
+    maesIniciarPolling(d.token,selec);
+}
 
-    ejecutarConPolling(nombre,
-        fetch('/api/maestros/ejecutar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script:ruta})}),
-        logMaes
-    );
+async function maesActualizarAmbos(){
+    await maesActualizarListaBD();
+    await maesActualizarListaDel();
+}
+
+async function maesActualizarListaBD(){
+    const container=document.getElementById('maes-bd-list');
+    if(!S.bdOk){container.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:20px;">BD no conectada</div>';return;}
+    container.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:10px;">Cargando...</div>';
+    try{
+        const [rTablas, rDesc]=await Promise.all([
+            fetch('/api/maestros/tablas'),
+            fetch('/api/maestros/descriptions')
+        ]);
+        const tablas=await rTablas.json();
+        const descs=await rDesc.json();
+        if(tablas.error||!tablas.length){
+            container.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:20px;">No se detectaron maestros<br>en la base de datos.</div>';
+            if(tablas.error)maesLog(`❌ ${tablas.error}`);
+            return;
+        }
+        const names=tablas.map(t=>t.nombre);
+        S.maes.disponiblesRapido=names;
+        S.maes.estadoRapido={};names.forEach(n=>{S.maes.estadoRapido[n]=true;});
+        S.maes.todosRapido=true;
+        const fijo=['maestro_his_cie_cpms','maestro_paciente','maestro_personal','maestro_his_ups','maestro_his_etnia','maestro_his_colegio','eess2025','maestro_his_establecimiento'];
+        const cargadosFijo=names.filter(n=>fijo.includes(n));
+        const otros=names.filter(n=>!fijo.includes(n));
+        const badge=document.getElementById('maes-bd-count');
+        if(badge)badge.textContent=names.length;
+        container.innerHTML='';
+        if(cargadosFijo.length){
+            const h=document.createElement('div');h.style.cssText='font-size:10px;font-weight:700;color:#2ECC71;padding:8px 14px 4px;text-transform:uppercase;letter-spacing:.4px;';
+            h.textContent='✅ HIS Proceso ('+cargadosFijo.length+')';
+            container.appendChild(h);
+            cargadosFijo.forEach(t=>{
+                const item=document.createElement('div');item.className='maes-bd-item';
+                item.innerHTML=`<div class="maes-bd-item-info"><div class="maes-bd-item-name">${t}</div><div class="maes-bd-item-desc">${descs[t]||t}</div></div><div class="maes-bd-item-status">Cargado</div>`;
+                container.appendChild(item);
+            });
+        }
+        if(otros.length){
+            const h=document.createElement('div');h.style.cssText='font-size:10px;font-weight:700;color:#5DADE2;padding:8px 14px 4px;text-transform:uppercase;letter-spacing:.4px;';
+            h.textContent='📚 Otros ('+otros.length+')';
+            container.appendChild(h);
+            otros.forEach(t=>{
+                const item=document.createElement('div');item.className='maes-bd-item';
+                item.innerHTML=`<div class="maes-bd-item-info"><div class="maes-bd-item-name">${t}</div><div class="maes-bd-item-desc">${descs[t]||'Maestro disponible'}</div></div>`;
+                container.appendChild(item);
+            });
+        }
+        maesLog(`🔄 Maestros cargados: ${names.length}`);
+        maesActualizarBtnRapido();
+    }catch(e){container.innerHTML=`<div class="maes-empty" style="color:#E74C3C;">${e.message}</div>`;}
+}
+
+async function maesActualizarListaDel(){
+    const container=document.getElementById('maes-del-list');
+    if(!S.bdOk){container.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:8px;">BD no conectada</div>';return;}
+    try{
+        const r=await fetch('/api/maestros/tablas');
+        const tablas=await r.json();
+        if(tablas.error||!tablas.length){
+            container.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:8px;">No hay tablas maestras</div>';
+            S.maes.delChecks={};
+            return;
+        }
+        container.innerHTML='';
+        S.maes.delChecks={};
+        tablas.forEach(t=>{
+            S.maes.delChecks[t.nombre]=false;
+            const label=document.createElement('label');
+            const cb=document.createElement('input');
+            cb.type='checkbox';
+            cb.addEventListener('change',()=>{S.maes.delChecks[t.nombre]=cb.checked;});
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' '+t.nombre));
+            container.appendChild(label);
+        });
+    }catch(e){container.innerHTML=`<div style="color:#E74C3C;padding:8px;">${e.message}</div>`;}
+}
+
+function maesSeleccionarTodosDel(){
+    const all=Object.keys(S.maes.delChecks);
+    if(!all.length)return;
+    const someOff=all.some(t=>!S.maes.delChecks[t]);
+    const val=someOff;
+    S.maes.delChecks={};
+    document.querySelectorAll('#maes-del-list input[type="checkbox"]').forEach(cb=>{cb.checked=val;});
+    all.forEach(t=>{S.maes.delChecks[t]=val;});
+}
+
+async function maesEliminarSeleccionados(){
+    if(!S.bdOk){toast('BD no conectada','warning');return;}
+    const selec=Object.keys(S.maes.delChecks).filter(t=>S.maes.delChecks[t]);
+    if(!selec.length){toast('Selecciona al menos una tabla','warning');return;}
+    if(!confirm(`Se eliminará(n):\n${selec.join(', ')}\n\n¿Continuar?`))return;
+    maesLog(`🗑️ Eliminando ${selec.length} tabla(s)...`);
+    const r=await fetch('/api/maestros/eliminar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tablas:selec})});
+    const d=await r.json();
+    if(d.error){maesLog(`❌ ${d.error}`);toast('Error al eliminar','error');return;}
+    d.resultados.forEach(r=>{maesLog(`${r.ok?'✅':'❌'} ${r.tabla}: ${r.ok?'Eliminada':r.error}`);});
+    maesLog('✅ Eliminación completada.');
+    document.getElementById('maes-bd-count').textContent='0';
+    setTimeout(()=>{maesActualizarAmbos();},500);
+}
+
+async function maesEliminarTodos(){
+    if(!confirm('⚠️ Se eliminarán TODAS las tablas maestras.\n\n¿Estás seguro?'))return;
+    maesLog('🗑️ Eliminando TODOS los maestros...');
+    const r=await fetch('/api/maestros/eliminar-todos',{method:'POST'});
+    const d=await r.json();
+    if(d.error){maesLog(`❌ ${d.error}`);toast('Error','error');return;}
+    maesLog(`✅ Se eliminaron ${d.eliminadas} tablas maestras.`);
+    setTimeout(()=>{maesActualizarAmbos();},500);
+}
+
+async function maesProcesarEESS(){
+    if(!S.bdOk){toast('BD no conectada','warning');return;}
+    maesLog('🏥 Procesando EESS principal...');
+    const r=await fetch('/api/maestros/ejecutar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        script:'scripts_python/ingesta/procesar_eess_principal.py',
+        args:[]
+    })});
+    const d=await r.json();
+    if(!r.ok){maesLog(`❌ Error: ${d.error||r.statusText}`);toast('Error','error');return;}
+    maesLog('✅ Procesamiento iniciado.');
+    maesIniciarPolling(d.token);
+}
+
+async function maesGenerarHISProceso(){
+    if(!S.bdOk){toast('BD no conectada','warning');return;}
+    const anio=document.getElementById('maes-anio').value;
+    const mes=document.getElementById('maes-mes').value;
+    if(!anio.match(/^\d{4}$/)){toast('Año inválido','warning');return;}
+    maesLog(`🚀 Generando HIS Proceso — Año: ${anio} | Mes: ${mes}`);
+    const r=await fetch('/api/maestros/ejecutar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        script:'scripts_python/ingesta/generar_his_proceso.py',
+        args:[anio, mes]
+    })});
+    const d=await r.json();
+    if(!r.ok){maesLog(`❌ Error: ${d.error||r.statusText}`);toast('Error','error');return;}
+    maesLog('✅ Generación iniciada.');
+    maesIniciarPolling(d.token);
+}
+
+async function maesRefrescarHISProceso(){
+    if(!S.bdOk){toast('BD no conectada','warning');return;}
+    const anio=document.getElementById('maes-anio').value;
+    const mes=document.getElementById('maes-mes').value;
+    const objetivo=document.getElementById('maes-refresco-his').value;
+    if(!anio.match(/^\d{4}$/)){toast('Año inválido','warning');return;}
+    const mesArg=mes==='Todos'?'Todos':String(parseInt(mes));
+    maesLog(`♻️ Refrescando HIS Proceso — Año: ${anio} | Mes: ${mesArg} | Objetivo: ${objetivo}`);
+    const r=await fetch('/api/maestros/ejecutar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        script:'scripts_python/ingesta/actualizar_his_proceso_maestros.py',
+        args:[anio, mesArg, objetivo]
+    })});
+    const d=await r.json();
+    if(!r.ok){maesLog(`❌ Error: ${d.error||r.statusText}`);toast('Error','error');return;}
+    maesLog('✅ Refresco iniciado.');
+    maesIniciarPolling(d.token);
+}
+
+async function maesActualizarRapido(){
+    if(!S.bdOk){toast('BD no conectada','warning');return;}
+    if(!S.maes.ruta){toast('Selecciona una carpeta primero','warning');return;}
+    const selec=maesGetRapidoSeleccionados();
+    if(!selec.length && S.maes.disponiblesRapido.length){toast('Selecciona al menos un maestro','warning');return;}
+    const cargarTodos=S.maes.todosRapido||!S.maes.disponiblesRapido.length;
+    const tablasSinEess=selec.filter(t=>t!=='eess2025');
+    const requiereEess=selec.includes('eess2025');
+    if(requiereEess && !tablasSinEess.length){
+        maesLog('ℹ️ eess2025 se reconstruye desde maestros base (no desde CSV directo).');
+    }else{
+        maesLog(`🔄 Actualizando ${cargarTodos?'todos los maestros':tablasSinEess.join(', ')} desde CSV crudo...`);
+        const args=[S.maes.ruta];
+        if(!cargarTodos && tablasSinEess.length) args.push('--tablas', ...tablasSinEess);
+        const r=await fetch('/api/maestros/ejecutar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            script:'scripts_python/ingesta/cargar_maestros.py',
+            args
+        })});
+        const d=await r.json();
+        if(!r.ok){maesLog(`❌ Error: ${d.error||r.statusText}`);toast('Error','error');return;}
+        maesLog('✅ Actualización rápida iniciada.');
+        maesIniciarPolling(d.token,selec,requiereEess);
+    }
+}
+
+let maesPollTimer=null;
+
+function maesIniciarPolling(token,selec,requiereEess){
+    if(maesPollTimer)clearInterval(maesPollTimer);
+    S.pollLastLine[token]=0;
+    const label=document.getElementById('maes-progress-label');
+    const bar=document.getElementById('maes-progress-bar');
+    const etaLabel=document.getElementById('maes-eta-label');
+    maesPollTimer=setInterval(async()=>{
+        try{
+            const r=await fetch(`/api/ejecucion/status/${token}`);
+            const s=await r.json();
+            if(s.status==='starting'||s.status==='running'){
+                label.textContent=s.status==='starting'?'Iniciando...':`Ejecutando: ${s.progress.done}/${s.progress.total||'?'}`;
+                const pct=(s.progress.total>0)?(s.progress.done/s.progress.total)*100:0;
+                bar.style.width=Math.min(pct,100)+'%';
+                etaLabel.textContent=s.progress.eta?'ETA: '+s.progress.eta:'';
+                const newLines=s.lines.slice(S.pollLastLine[token]||0);
+                newLines.forEach(l=>maesLog(l));
+                S.pollLastLine[token]=s.line_count;
+            }else if(s.status==='completed'||s.status==='error'||s.status==='cancelled'){
+                clearInterval(maesPollTimer);maesPollTimer=null;
+                const newLines=s.lines.slice(S.pollLastLine[token]||0);
+                newLines.forEach(l=>maesLog(l));
+                S.pollLastLine[token]=s.line_count;
+                if(s.status==='completed'){
+                    label.textContent='✅ Completado';
+                    bar.style.width='100%';
+                    maesLog('✅ Proceso completado.');
+                    if(requiereEess){
+                        maesLog('ℹ️ Reconstruyendo eess2025 desde maestros base...');
+                        const r2=await fetch('/api/maestros/ejecutar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+                            script:'scripts_python/ingesta/procesar_eess_principal.py',
+                            args:[]
+                        })});
+                        const d2=await r2.json();
+                        if(r2.ok)maesIniciarPolling(d2.token);
+                        else maesLog('❌ Error al procesar EESS.');
+                    }else if(selec && selec.length){
+                        const lc=selec.map(s=>s.toLowerCase());
+                        if(lc.some(s=>s.includes('maestro_his_establecimiento')||s.includes('susalud'))){
+                            maesLog('ℹ️ Sugerencia: ejecuta "Procesar EESS principal" para reconstruir eess2025.');
+                        }
+                    }
+                    setTimeout(()=>{maesActualizarAmbos();},1000);
+                }else{
+                    label.textContent='❌ Error';
+                    maesLog(`❌ Proceso terminó con estado: ${s.status}`);
+                }
+                setTimeout(()=>{label.textContent='Progreso: en espera';bar.style.width='0%';etaLabel.textContent='ETA: --:--';},5000);
+                delete S.pollLastLine[token];
+            }
+        }catch(e){/* ignore polling errors */}
+    },800);
+}
+
+function maesGetRapidoSeleccionados(){
+    if(S.maes.todosRapido) return [...S.maes.disponiblesRapido];
+    return Object.keys(S.maes.estadoRapido).filter(t=>S.maes.estadoRapido[t]);
+}
+
+function maesEditarScript(titulo,ruta){
+    // Opens the editor modal for a maestro script
+    const btn=document.getElementById('btn-editor');
+    if(btn)btn.click();
+    // After login, navigate to the file
+    setTimeout(()=>{abrirEditor(ruta,titulo);},1000);
+}
+
+// Watch S.editorMode for maestro edit buttons
+setInterval(()=>{
+    const e=document.getElementById('btn-maes-editar-eess');
+    const e2=document.getElementById('btn-maes-editar-his2');
+    if(e)e.style.display=S.editorMode?'':'none';
+    if(e2)e2.style.display=S.editorMode?'':'none';
+},2000);
+
+function maesMostrarMenuRapido(){
+    const names=S.maes.disponiblesRapido;
+    if(!names||!names.length){
+        toast('No hay maestros cargados en BD. Actualiza la lista primero.','warning');
+        return;
+    }
+    openModal('modal-maes-menu');
+    document.getElementById('maes-menu-title').textContent='Seleccionar maestros para actualización rápida';
+    const container=document.getElementById('maes-menu-body');
+    container.innerHTML='';
+    const cbAll=document.createElement('label');
+    cbAll.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 4px;font-weight:bold;';
+    const chkAll=document.createElement('input');
+    chkAll.type='checkbox';
+    chkAll.checked=S.maes.todosRapido;
+    chkAll.addEventListener('change',()=>{
+        const val=chkAll.checked;
+        S.maes.todosRapido=val;
+        container.querySelectorAll('.maes-menu-item input').forEach(cb=>{cb.checked=val;});
+        names.forEach(n=>{S.maes.estadoRapido[n]=val;});
+        maesActualizarBtnRapido();
+    });
+    cbAll.appendChild(chkAll);
+    cbAll.appendChild(document.createTextNode('Todos los maestros'));
+    container.appendChild(cbAll);
+    names.forEach(n=>{
+        const label=document.createElement('label');
+        label.className='maes-menu-item';
+        label.style.cssText='display:flex;align-items:center;gap:6px;padding:3px 8px;cursor:pointer;';
+        const cb=document.createElement('input');
+        cb.type='checkbox';
+        cb.checked=S.maes.estadoRapido[n]!==false;
+        cb.addEventListener('change',()=>{
+            S.maes.estadoRapido[n]=cb.checked;
+            S.maes.todosRapido=names.every(t=>S.maes.estadoRapido[t]);
+            chkAll.checked=S.maes.todosRapido;
+            maesActualizarBtnRapido();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' '+n));
+        container.appendChild(label);
+    });
+}
+
+function maesActualizarBtnRapido(){
+    const btn=document.getElementById('btn-maes-rapido-select');
+    if(!btn)return;
+    const selec=maesGetRapidoSeleccionados();
+    if(!S.maes.disponiblesRapido.length)btn.textContent='Todos los maestros';
+    else if(S.maes.todosRapido)btn.textContent='Todos los maestros';
+    else if(selec.length===1)btn.textContent=selec[0];
+    else btn.textContent=`${selec.length} maestros (${selec.slice(0,2).join(', ')}${selec.length>2?'...':''})`;
 }
 
 // ==================== EDITOR ====================
