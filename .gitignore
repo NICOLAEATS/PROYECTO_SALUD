@@ -21,6 +21,13 @@ dist.zip
 # Data and logs
 datos/
 logs/
+scripts_sql/PADRONES/
+
+# Excel macro templates (reference .txt already tracked)
+*.xlsm
+
+# opencode user config
+.opencode/
 carga_test.err
 carga_test.log
 
@@ -32,6 +39,10 @@ _temp_*
 _tmp_*
 _analisis_*
 _cred2024_*
+_analyze_*
+analyze_*.py
+check_*.py
+check_*.*
 tmp_*
 test_*.py
 test_*.log
