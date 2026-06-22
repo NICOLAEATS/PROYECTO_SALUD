@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRED - Informe Mensual del Niño(a) 2026 - DIRESA CUSCO</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 10px; background: #fff; color: #000; }
+  .page { width: 100%; max-width: 1400px; margin: 0 auto; padding: 10px; }
+
+  .header { text-align: center; margin-bottom: 6px; }
+  .header h2 { font-size: 11px; font-weight: bold; text-transform: uppercase; }
+  .header h3 { font-size: 10px; font-weight: bold; text-transform: uppercase; }
+  .header h4 { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #2E75B6; margin-top: 2px; }
+
+  .filter-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    font-size: 9px;
+    margin-bottom: 6px;
+    padding: 4px 0;
+    border-top: 1px solid #4472C4;
+    border-bottom: 1px solid #4472C4;
+  }
+  .filter-row2 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    font-size: 9px;
+    margin-bottom: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #4472C4;
+  }
+  .filter-cell { display: flex; flex-direction: column; }
+  .filter-cell label { font-weight: bold; color: #2E75B6; }
+  .filter-cell span { border-bottom: 1px solid #9DC3E6; }
+
+  .section-title {
+    background: #4472C4;
+    color: #fff;
+    font-weight: bold;
+    font-size: 10px;
+    padding: 3px 6px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .sub-section-title {
+    background: #D6E4F7;
+    font-weight: bold;
+    font-size: 9px;
+    padding: 2px 6px;
+    margin-bottom: 2px;
+    border-left: 3px solid #4472C4;
+  }
+  .sub2-title {
+    background: #F2F2F2;
+    font-weight: bold;
+    font-size: 9px;
+    padding: 2px 6px;
+    margin-bottom: 2px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 6px;
+    font-size: 9px;
+  }
+  th, td {
+    border: 1px solid #000;
+    padding: 2px 4px;
+    vertical-align: middle;
+    text-align: center;
+  }
+  th {
+    background: #BDD7EE;
+    font-weight: bold;
+    font-size: 8.5px;
+  }
+  .th-dark { background: #2E75B6; color: #fff; }
+  .th-medium { background: #9DC3E6; }
+  .th-green { background: #70AD47; color: #fff; }
+  .th-orange { background: #ED7D31; color: #fff; }
+
+  td.label-left { text-align: left; padding-left: 4px; }
+  td.label-indent { text-align: left; padding-left: 12px; font-size: 8.5px; }
+  td.nota { font-size: 7.5px; color: #595959; font-style: italic; text-align: left; padding-left: 4px; }
+  td.num { font-weight: bold; }
+  td.zero { color: #595959; }
+
+  .row-header { background: #DDEBF7; font-weight: bold; }
+  .row-sub { background: #F2F2F2; }
+  .row-total { background: #2E75B6; color: #fff; font-weight: bold; }
+
+  /* Two-column grid for parallel sections */
+  .dual-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  @media print {
+    body { font-size: 8px; }
+    .page { max-width: 100%; padding: 5px; }
+    @page { size: A3 landscape; margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <h2>DIRECCIÓN REGIONAL DE SALUD CUSCO</h2>
+    <h3>DIRECCIÓN DE ESTADÍSTICA E INFORMÁTICA Y TELECOMUNICACIÓN</h3>
+    <h4>INFORME MENSUAL DEL CUIDADO INTEGRAL DEL NIÑO(A)</h4>
+  </div>
+
+  <!-- Filters row 1 -->
+  <div class="filter-row">
+    <div class="filter-cell"><label>RED DE SALUD:</label><span>(Todas)</span></div>
+    <div class="filter-cell"><label>MICRO RED:</label><span>(Todas)</span></div>
+    <div class="filter-cell"><label>PROVINCIA:</label><span>(Todas)</span></div>
+    <div class="filter-cell"><label>AÑO:</label><span>2026</span></div>
+  </div>
+  <!-- Filters row 2 -->
+  <div class="filter-row2">
+    <div class="filter-cell"><label>ESTABLECIMIENTO:</label><span>(Todas)</span></div>
+    <div class="filter-cell"><label>DISTRITO:</label><span>(Todas)</span></div>
+    <div class="filter-cell"><label>MES INICIO:</label><span>1</span></div>
+    <div class="filter-cell"><label>MES FIN:</label><span>6</span></div>
+    <div class="filter-cell"></div>
+  </div>
+
+  <!-- ===== CONTROL CRECIMIENTO Y DESARROLLO ===== -->
+  <div class="section-title">CONTROL DE CRECIMIENTO Y DESARROLLO DEL NIÑO(A)</div>
+  <div class="sub-section-title">N° de Controles de Crecimiento y Desarrollo de 0 a 11 Años</div>
+  <table>
+    <colgroup>
+      <col style="width:14%">
+      <col style="width:9%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+      <col style="width:7%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="th-dark">GRUPO ETAREO</th>
+        <th class="th-dark">PROGRAMACIÓN</th>
+        <th class="th-medium">1er Ctrl 29-59d</th>
+        <th class="th-medium">2do Ctrl 60-89d</th>
+        <th class="th-medium">3er Ctrl 90-119d</th>
+        <th class="th-medium">4to Ctrl 120-149d</th>
+        <th class="th-medium">5to Ctrl 180-209d</th>
+        <th class="th-medium">6to Ctrl 210-239d</th>
+        <th class="th-medium">7mo Ctrl 270-299d</th>
+        <th class="th-medium">8vo Ctrl</th>
+        <th class="th-medium">9no Ctrl</th>
+        <th class="th-medium">10mo Ctrl</th>
+        <th class="th-medium">11vo Ctrl</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="label-left">Recién Nacido Sano 3-6d</td><td></td><td class="num">5,256</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="row-sub"><td class="label-left">Recién Nacido Sano 7-13d</td><td></td><td class="num">278</td><td class="num">5,100</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="label-left">Recién Nacido Sano 14-21d</td><td></td><td class="num">58</td><td class="num">479</td><td class="num">5,006</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="row-sub"><td class="label-left">Recién Nacido Sano may_22d</td><td></td><td></td><td></td><td></td><td class="num">50</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="label-left">RN Bajo Peso</td><td></td><td class="num">126</td><td class="num">101</td><td class="num">90</td><td class="num">5</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="row-sub"><td class="label-left">RN Prematuro</td><td></td><td class="num">140</td><td class="num">117</td><td class="num">108</td><td class="num">12</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="label-left">&lt; 1 año</td><td></td><td class="num">5,349</td><td class="num">4,768</td><td class="num">4,807</td><td class="num">5,126</td><td class="num">4,963</td><td class="num">4,682</td><td class="num">4,737</td><td class="num">84</td><td class="num">111</td><td class="num">88</td><td class="num">124</td></tr>
+      <tr class="row-sub"><td class="label-left">1 año</td><td></td><td class="num">4,951</td><td class="num">4,067</td><td class="num">3,742</td><td class="num">3,222</td><td class="num">94</td><td class="num">145</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="label-left">2 años</td><td></td><td class="num">4,570</td><td class="num">3,498</td><td class="num">107</td><td class="num">122</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="row-sub"><td class="label-left">3 años</td><td></td><td class="num">4,320</td><td class="num">2,649</td><td class="num">84</td><td class="num">99</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="label-left">4 años</td><td></td><td class="num">3,693</td><td class="num">1,683</td><td class="num">57</td><td class="num">37</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="row-sub"><td class="label-left">5-9 años</td><td></td><td class="num">493</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="label-left">10-11 años</td><td></td><td class="num">94</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="row-total"><td>TOTAL</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <!-- ===== I. ATENCIÓN DEL RECIÉN NACIDO ===== -->
+  <div class="section-title">I. ATENCIÓN DEL RECIÉN NACIDO</div>
+  <div class="dual-grid">
+    <!-- A) Atención Inmediata -->
+    <div>
+      <div class="sub2-title">A) Atención Inmediata</div>
+      <table>
+        <thead>
+          <tr><th class="th-dark">ACTIVIDADES</th><th class="th-dark">N°</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="label-left">Atención Inmediata</td><td class="num">5,360</td></tr>
+          <tr class="row-sub"><td class="label-left">Corte tardío del Cordón Umbilical</td><td class="num">6,967</td></tr>
+          <tr><td class="label-left">Contacto Piel a Piel con la madre</td><td class="num">5,246</td></tr>
+          <tr class="row-sub"><td class="label-left">Examen físico del recién nacido normal</td><td class="num">7,929</td></tr>
+          <tr><td class="label-left">Lactancia Materna en la 1ª Hora</td><td class="num">6,967</td></tr>
+          <tr class="row-sub"><td class="label-left">BCG MENORES A 1m</td><td class="num">6,352</td></tr>
+          <tr><td class="label-left">HVB RN</td><td class="num">6,294</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub2-title" style="margin-top:4px;">B) Condición de Nacimiento del Recién Nacido</div>
+      <table>
+        <thead>
+          <tr><th class="th-dark">DIAGNÓSTICOS</th><th class="th-dark">N°</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="label-left">Extremadamente bajo peso</td><td>14</td></tr>
+          <tr class="row-sub"><td class="label-left">Muy bajo peso al nacer</td><td>13</td></tr>
+          <tr><td class="label-left">Bajo peso al nacer</td><td>531</td></tr>
+          <tr class="row-sub"><td class="label-left">Macrosómico</td><td>106</td></tr>
+          <tr><td class="label-left">Microcefalia</td><td class="zero">0</td></tr>
+          <tr class="row-sub"><td class="label-left">Recién nacido prematuro</td><td>493</td></tr>
+          <tr><td class="label-left">Recién Nacido Normal</td><td>45</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub2-title" style="margin-top:4px;">B) Resultados del Tamizaje Neonatal</div>
+      <table>
+        <thead>
+          <tr><th class="th-dark">DIAGNÓSTICOS</th><th class="th-dark">N°</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="label-left">Hipotiroidismo Congénito</td><td>4</td></tr>
+          <tr class="row-sub"><td class="label-left">Fenilcetonuria Clásica</td><td>2</td></tr>
+          <tr><td class="label-left">Hiperplasia Suprarrenal Congénita</td><td>16</td></tr>
+          <tr class="row-sub"><td class="label-left">Tamizaje de Cardiopatía Congénita</td><td class="num">1,676</td></tr>
+          <tr><td class="label-left">Fibrosis Quística, sin otra especificación</td><td>45</td></tr>
+          <tr class="row-sub"><td class="label-left">Catarata Congénita</td><td>341</td></tr>
+          <tr><td class="label-left">Cardiopatía congénita</td><td class="zero">0</td></tr>
+          <tr class="row-sub"><td class="label-left">Hipoacusia conductiva</td><td class="zero">0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- C) Alojamiento Conjunto -->
+    <div>
+      <div class="sub2-title">C) Atención de Recién Nacido en Alojamiento Conjunto</div>
+      <table>
+        <thead>
+          <tr><th class="th-dark">ACTIVIDADES</th><th class="th-dark">N°</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="label-left">Atención del RN en Alojamiento Conjunto</td><td class="num">7,870</td></tr>
+          <tr class="row-sub"><td class="label-left">Evaluación médica del recién nacido</td><td class="num">1,448</td></tr>
+          <tr><td class="label-left">Tamizaje neonatal: toma de muestra</td><td class="num">6,817</td></tr>
+          <tr class="row-sub"><td class="label-left">Tamizaje de hipoacusia</td><td>391</td></tr>
+          <tr><td class="label-left">Tamizaje de catarata congénita</td><td>341</td></tr>
+          <tr class="row-sub"><td class="label-left">Tamizaje de cardiopatía congénita</td><td class="num">1,676</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub2-title" style="margin-top:4px;">Consejería en Atención del RN - Alojamiento Conjunto</div>
+      <table>
+        <thead>
+          <tr><th class="th-dark">ACTIVIDADES</th><th class="th-dark">N°</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="label-left">Consejería en corte y cuidado del cordón umbilical</td><td class="num">17,204</td></tr>
+          <tr class="row-sub"><td class="label-left">Consejería en Lactancia Materna Exclusiva</td><td class="num">33,274</td></tr>
+          <tr><td class="label-left">Consejería en importancia del control CRED (4 controles)</td><td class="num">4,751</td></tr>
+          <tr class="row-sub"><td class="label-left">Consejería de identificación de signos de alarma</td><td class="num">11,870</td></tr>
+          <tr><td class="label-left">Consejería en higiene del RN y cuidado en el hogar</td><td class="zero">0</td></tr>
+          <tr class="row-sub"><td class="label-left">Consejería en alimentación con sucedáneos (neonatos VIH)</td><td>55</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub2-title" style="margin-top:4px;">E) Atención del Recién Nacido en Visita Domiciliaria</div>
+      <table>
+        <thead>
+          <tr><th class="th-dark">DIAGNÓSTICOS</th><th class="th-dark">N°</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="label-left">Visita domiciliaria para el cuidado y evaluación neonatal</td><td class="num">10,705</td></tr>
+          <tr class="row-sub"><td class="label-left">Anamnesis y examen físico del RN normal</td><td class="num">16,156</td></tr>
+          <tr><td class="label-left">Consejería en higiene del RN y cuidado en el hogar</td><td class="num">8,227</td></tr>
+          <tr class="row-sub"><td class="label-left">Consejería en cuidado del cordón umbilical</td><td class="num">28,253</td></tr>
+          <tr><td class="label-left">Consejería en importancia del control CRED (4 controles)</td><td class="num">15,367</td></tr>
+          <tr class="row-sub"><td class="label-left">Consejería de identificación de signos de alarma</td><td class="num">31,091</td></tr>
+          <tr><td class="label-left">Consejería en higiene de manos</td><td class="num">36,676</td></tr>
+          <tr class="row-sub"><td class="label-left">Consejería en Lactancia Materna Exclusiva hasta 6 meses</td><td class="num">54,640</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== IX. EVALUACIÓN DEL DESARROLLO ===== -->
+  <div class="section-title">IX. EVALUACIÓN DEL DESARROLLO</div>
+  <table>
+    <thead>
+      <tr>
+        <th class="th-dark" rowspan="3">Edades</th>
+        <th class="th-dark" colspan="10">Retardo del Desarrollo</th>
+        <th class="th-dark" rowspan="3">Evaluac. Normal</th>
+      </tr>
+      <tr>
+        <th class="th-medium" colspan="2">Lenguaje</th>
+        <th class="th-medium" colspan="2">Motora</th>
+        <th class="th-medium" colspan="2">Social</th>
+        <th class="th-medium" colspan="2">Coordinación</th>
+        <th class="th-medium" colspan="2">Cognitiva</th>
+      </tr>
+      <tr>
+        <th class="th-medium">Dx.</th><th class="th-medium">Recup.</th>
+        <th class="th-medium">Dx.</th><th class="th-medium">Recup.</th>
+        <th class="th-medium">Dx.</th><th class="th-medium">Recup.</th>
+        <th class="th-medium">Dx.</th><th class="th-medium">Recup.</th>
+        <th class="th-medium">Dx.</th><th class="th-medium">Recup.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="label-left">&lt; 1 año</td>
+        <td>3</td><td>2</td><td>18</td><td>5</td><td class="zero">0</td><td class="zero">0</td><td>4</td><td>1</td><td>1</td><td class="zero">0</td>
+        <td class="nota">TD=D+DX=Z006+LAB=ED</td>
+      </tr>
+      <tr class="row-sub">
+        <td class="label-left">01 año</td>
+        <td>16</td><td>2</td><td>35</td><td>1</td><td class="zero">0</td><td class="zero">0</td><td>2</td><td class="zero">0</td><td>3</td><td class="zero">0</td>
+        <td class="nota">TD=D+DX=Z006+LAB=ED</td>
+      </tr>
+      <tr>
+        <td class="label-left">02 años</td>
+        <td>32</td><td>3</td><td>13</td><td class="zero">0</td><td>3</td><td class="zero">0</td><td>2</td><td class="zero">0</td><td>1</td><td class="zero">0</td>
+        <td class="nota">TD=D+DX=Z006+LAB=ED</td>
+      </tr>
+      <tr class="row-sub">
+        <td colspan="12" style="text-align:left;padding-left:4px;font-size:8px;">Dx: Diagnosticado &nbsp;&nbsp;&nbsp; Recup: Recuperado</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Sesiones Atención Temprana -->
+  <div class="sub-section-title">II. SESIONES DE ATENCIÓN TEMPRANA (99411)</div>
+  <table>
+    <thead>
+      <tr>
+        <th class="th-dark">Edad</th>
+        <th class="th-medium">1ª Sesión</th>
+        <th class="th-medium">2ª Sesión</th>
+        <th class="th-medium">3ª Sesión</th>
+        <th class="th-medium">4ª Sesión</th>
+        <th class="th-medium">5ª Sesión</th>
+        <th class="th-dark">Niño con sesiones completas (Mensual)</th>
+        <th class="th-dark">Niño con sesiones completas (Acum.)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="label-left">RN</td><td class="num">2,560</td><td></td><td></td><td></td><td></td><td class="num">2,560</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <!-- ===== VI. LACTANCIA MATERNA ===== -->
+  <div class="section-title">VI. LACTANCIA MATERNA EXCLUSIVA</div>
+  <table style="width:50%">
+    <thead>
+      <tr><th class="th-dark">CONDICIÓN</th><th class="th-dark">N°</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="label-left">Con lactancia materna exclusiva</td><td></td></tr>
+      <tr class="row-sub"><td class="label-left">Con lactancia materna no exclusiva</td><td></td></tr>
+      <tr><td class="label-left">Con lactancia artificial</td><td></td></tr>
+      <tr class="row-sub"><td class="label-left">Con alimentación mixta</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <!-- ===== XVI. IRAS / EDAS (desde FORMATO NIÑO) ===== -->
+  <div class="section-title">XVI. ATENCIÓN DE LAS ENFERMEDADES PREVALENTES DE LA INFANCIA</div>
+
+  <!-- A. IRA -->
+  <div class="sub-section-title">A. INFECCIÓN RESPIRATORIA AGUDA (IRA)</div>
+  <table>
+    <colgroup>
+      <col style="width:28%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:12%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="th-dark" rowspan="2">DIAGNÓSTICOS</th>
+        <th class="th-dark" colspan="6">Grupo de Edad</th>
+        <th class="th-dark" rowspan="2">Total</th>
+      </tr>
+      <tr>
+        <th class="th-medium">29d a 59 Días</th>
+        <th class="th-medium">02 - 11 Meses</th>
+        <th class="th-medium">01 año</th>
+        <th class="th-medium">2 año</th>
+        <th class="th-medium">3 año</th>
+        <th class="th-medium">4 año</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="row-header">
+        <td class="label-left">1. Total de Casos de IRA (1+2+3)</td>
+        <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+      </tr>
+      <tr class="row-sub">
+        <td class="label-left">1.1 N° casos de IRA sin complicaciones (a+b+c+d+e)</td>
+        <td class="num">742</td><td class="num">4,019</td><td class="num">4,678</td><td class="num">3,905</td><td class="num">3,903</td><td class="num">3,503</td><td class="num">31,748</td>
+      </tr>
+      <tr><td class="label-indent">a. IRA no complicada</td><td class="num">737</td><td class="num">4,000</td><td class="num">2,932</td><td class="num">2,177</td><td class="num">2,175</td><td class="num">1,777</td><td class="num">21,033</td></tr>
+      <tr class="row-sub"><td class="label-indent">b. Faringoamigdalitis Aguda</td><td></td><td></td><td class="num">1,671</td><td class="num">1,671</td><td class="num">1,671</td><td class="num">1,671</td><td class="num">10,026</td></tr>
+      <tr><td class="label-indent">c. Otitis Media Aguda (OMA)</td><td>5</td><td>19</td><td>31</td><td>31</td><td>31</td><td>31</td><td>461</td></tr>
+      <tr class="row-sub"><td class="label-indent">d. Sinusitis Aguda</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td>1</td><td>1</td><td>23</td></tr>
+      <tr><td class="label-indent">e. Neumonía sin complicaciones</td><td></td><td></td><td>44</td><td>26</td><td>25</td><td>23</td><td>205</td></tr>
+      <tr class="row-sub">
+        <td class="label-left">1.2 N° casos IRA con complicaciones (a+b+c)</td>
+        <td>3</td><td>5</td><td>4</td><td>4</td><td>5</td><td>3</td><td>30</td>
+      </tr>
+      <tr><td class="label-indent">a. IRA con complicaciones</td><td>2</td><td>5</td><td>4</td><td>4</td><td>5</td><td>3</td><td>29</td></tr>
+      <tr class="row-sub"><td class="label-indent">b. Neumonía Grave / EMG Menores de 2 Meses</td><td>1</td><td></td><td></td><td></td><td></td><td></td><td>1</td></tr>
+      <tr><td class="label-indent">c. Neumonía y EMG en Niños de 2 Meses a 4 Años</td><td></td><td>16</td><td>20</td><td>14</td><td>7</td><td>3</td><td>60</td></tr>
+    </tbody>
+  </table>
+
+  <!-- B. SOB -->
+  <div class="sub-section-title">B. SÍNDROME DE OBSTRUCCIÓN BRONQUIAL (SOB) - ASMA</div>
+  <table>
+    <colgroup>
+      <col style="width:28%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:12%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="th-dark" rowspan="2">DIAGNÓSTICOS</th>
+        <th class="th-dark" colspan="6">Grupo de Edad</th>
+        <th class="th-dark" rowspan="2">Total</th>
+      </tr>
+      <tr>
+        <th class="th-medium">02 - 11 Meses</th>
+        <th class="th-medium">01 año</th>
+        <th class="th-medium">2 año</th>
+        <th class="th-medium">3 año</th>
+        <th class="th-medium">4 año</th>
+        <th class="th-medium">05 - 11 Años</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="label-indent">a. SOB/Asma</td>
+        <td class="num">197</td><td>10</td><td>19</td><td>20</td><td>21</td><td class="num">137</td><td class="zero">0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- C. EDA -->
+  <div class="sub-section-title">C. ENFERMEDAD DIARREICA AGUDA (EDA)</div>
+  <table>
+    <colgroup>
+      <col style="width:28%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:12%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="th-dark" rowspan="2">DIAGNÓSTICOS</th>
+        <th class="th-dark" colspan="6">Grupo de Edad</th>
+        <th class="th-dark" rowspan="2">Total</th>
+      </tr>
+      <tr>
+        <th class="th-medium">&lt; 01 Año</th>
+        <th class="th-medium">01 año</th>
+        <th class="th-medium">2 año</th>
+        <th class="th-medium">3 año</th>
+        <th class="th-medium">4 año</th>
+        <th class="th-medium">05 - 11 Años</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="row-header">
+        <td class="label-left">1. Enfermedades Diarreicas sin complicaciones (a+b+c)</td>
+        <td class="num">1,236</td><td class="num">1,511</td><td>791</td><td>562</td><td>387</td><td class="num">1,755</td><td class="num">6,242</td>
+      </tr>
+      <tr><td class="label-indent">a. Diarrea Aguda Acuosa sin deshidratación</td><td>758</td><td>949</td><td>502</td><td>351</td><td>255</td><td class="num">1,178</td><td class="num">3,993</td></tr>
+      <tr class="row-sub"><td class="label-indent">b. Diarrea Aguda Disentérica sin deshidratación</td><td>9</td><td>13</td><td>9</td><td>9</td><td>8</td><td>29</td><td>77</td></tr>
+      <tr><td class="label-indent">c. Diarrea Persistente sin deshidratación</td><td>469</td><td>549</td><td>280</td><td>202</td><td>124</td><td>548</td><td class="num">2,172</td></tr>
+      <tr class="row-header">
+        <td class="label-left">2. Enfermedades Diarreicas con complicaciones (a+b+c+d+e+f)</td>
+        <td>24</td><td>64</td><td>7</td><td>6</td><td>5</td><td>18</td><td>124</td>
+      </tr>
+      <tr><td class="label-indent">a. Diarrea Aguda Acuosa con deshidratación</td><td>12</td><td>36</td><td>5</td><td>2</td><td>3</td><td>12</td><td>70</td></tr>
+      <tr class="row-sub"><td class="label-indent">b. Diarrea Aguda Disentérica con deshidratación</td><td>6</td><td>14</td><td>1</td><td>2</td><td>1</td><td class="zero">0</td><td>24</td></tr>
+      <tr><td class="label-indent">c. Diarrea Persistente con deshidratación</td><td>6</td><td>14</td><td>1</td><td>2</td><td>1</td><td>6</td><td>30</td></tr>
+      <tr class="row-sub"><td class="label-indent">d. Diarrea Aguda Acuosa con deshidratación con shock</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td></tr>
+      <tr><td class="label-indent">e. Diarrea Aguda Disentérica con deshidratación con shock</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td></tr>
+      <tr class="row-sub"><td class="label-indent">f. Diarrea Persistente con deshidratación con shock</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Zinc y SRO -->
+  <div class="sub-section-title">ADMINISTRACIÓN DE ZINC Y SAL DE REHIDRATACIÓN ORAL</div>
+  <table>
+    <colgroup>
+      <col style="width:28%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:12%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="th-dark" rowspan="2">ACTIVIDADES</th>
+        <th class="th-dark" colspan="6">Grupo de Edad</th>
+        <th class="th-dark" rowspan="2">Total</th>
+      </tr>
+      <tr>
+        <th class="th-medium">&lt; 1 año</th>
+        <th class="th-medium">01 año</th>
+        <th class="th-medium">2 año</th>
+        <th class="th-medium">3 año</th>
+        <th class="th-medium">4 año</th>
+        <th class="th-medium">05 - 11 Años</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="label-left">Administración de tratamiento - Sales de Rehidratación Oral (SRO)</td>
+        <td>10</td><td>6</td><td>7</td><td>1</td><td>2</td><td>4</td><td class="zero">0</td>
+      </tr>
+      <tr class="row-sub">
+        <td class="label-left">Administración de tratamiento - Zinc (ZN)</td>
+        <td>71</td><td>107</td><td>70</td><td>33</td><td>20</td><td>27</td><td class="zero">0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="font-size:8px;color:#595959;margin-top:8px;border-top:1px solid #9DC3E6;padding-top:4px;">
+    DIRESA CUSCO &nbsp;|&nbsp; DEIT &nbsp;|&nbsp; Sistema HIS &nbsp;|&nbsp; CRED 2026 &nbsp;|&nbsp; Impreso: <span id="fecha"></span>
+  </div>
+</div>
+<script>
+  document.getElementById('fecha').textContent = new Date().toLocaleDateString('es-PE');
+</script>
+</body>
+</html>
