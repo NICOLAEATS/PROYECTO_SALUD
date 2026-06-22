@@ -59,8 +59,8 @@ test_extract/
 tesis/
 scripts_python/pruebas/
 
-# Documentation generated
-DOCUMENTACION_SISTEMA_WEB*.md
+# Documentation generated (tracked manually)
+# DOCUMENTACION_SISTEMA_WEB*.md
 
 # IDE
 opencode.json
