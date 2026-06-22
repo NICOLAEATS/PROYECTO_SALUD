@@ -26,7 +26,7 @@ async function fetchTimeout(url, options, timeoutMs=5000){
 }
 
 // ==================== TOAST ====================
-function toast(m,t='info'){const c=document.getElementById('toast-container'),e=document.createElement('div');e.className=`toast ${t}`;e.textContent=m;c.appendChild(e);setTimeout(()=>{e.style.opacity='0';e.style.transition='opacity .3s';setTimeout(()=>e.remove(),300)},4000)}
+function toast(m,t='info'){const c=document.getElementById('toast-container'),e=document.createElement('div');e.className=`toast ${t}`;e.innerHTML=m;c.appendChild(e);setTimeout(()=>{e.style.opacity='0';e.style.transition='opacity .3s';setTimeout(()=>e.remove(),300)},6000)}
 
 // ==================== MODAL ====================
 function openModal(id){document.getElementById(id).classList.add('active')}
@@ -56,11 +56,22 @@ function switchModule(m){
 }
 
 // ==================== THEME ====================
+function setThemeMode(theme){
+    const h=document.documentElement;
+    const mode=theme==='light'?'light':'dark';
+    h.setAttribute('data-theme',mode);
+    document.getElementById('theme-toggle').textContent=mode==='dark'?'🌙':'☀️';
+    try{localStorage.setItem('psc_theme',mode)}catch(e){}
+}
+try{setThemeMode(localStorage.getItem('psc_theme')||document.documentElement.getAttribute('data-theme')||'light')}catch(e){setThemeMode('light')}
 document.getElementById('theme-toggle').addEventListener('click',()=>{
     const h=document.documentElement;
     const n=h.getAttribute('data-theme')==='dark'?'light':'dark';
-    h.setAttribute('data-theme',n);
-    document.getElementById('theme-toggle').textContent=n==='dark'?'🌙':'☀️';
+    setThemeMode(n);
+    setTimeout(()=>{
+        if(typeof dashRecargar==='function'&&document.getElementById('module-dashboards')?.classList.contains('active'))dashRecargar();
+        if(typeof MAPA!=='undefined'&&MAPA)MAPA.invalidateSize();
+    },80);
 })
 
 // ==================== TABS ====================
@@ -174,7 +185,6 @@ function stopPolling(){
 
 // ==================== GLOBAL PROGRESS ====================
 function globalStart(nombre, determinate=false){
-    S.activeToken = 0;
     S.ejecutando=true;
     document.getElementById('global-status').textContent=`⏳ ${nombre}`;
     document.getElementById('global-status').style.color='yellow';

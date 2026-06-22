@@ -27,6 +27,30 @@ carga_test.log
 # Session files
 session-ses_*.md
 
+# Temp / test files
+_temp_*
+_tmp_*
+_analisis_*
+_cred2024_*
+tmp_*
+test_*.py
+test_*.log
+test_*.json
+flask_test*.log
+stdout*.txt
+stderr*.txt
+run.py
+read_excel.py
+ultimo
+
+# Temp directories
+test_extract/
+tesis/
+scripts_python/pruebas/
+
+# Documentation generated
+DOCUMENTACION_SISTEMA_WEB*.md
+
 # IDE
 opencode.json
 

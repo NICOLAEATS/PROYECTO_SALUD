@@ -1,16 +1,16 @@
 
-CREATE OR REPLACE PROCEDURE es_ivan.sp_generar_iras_edas_2026()
+CREATE OR REPLACE PROCEDURE es_ivan.sp_generar_iras_edas_{ANIO}()
 LANGUAGE plpgsql
 AS $$
 BEGIN
 	
 	 -- 1️⃣ Eliminar tabla final si existe
- DROP TABLE IF EXISTS es_ivan.IRAS_EDAS_2026;
+ DROP TABLE IF EXISTS es_ivan.IRAS_EDAS_{ANIO};
 
     -- 2️⃣ Eliminar tabla temporal si existe
 
 
-CREATE TABLE es_ivan.IRAS_EDAS_2026 AS
+CREATE TABLE es_ivan.IRAS_EDAS_{ANIO} AS
 
 WITH citas_con_desh AS (
     SELECT DISTINCT id_cita
@@ -58,7 +58,7 @@ base AS (
         hp.id_etnia,
         hp.genero
     FROM es_ivan.tabla_iras_edas hp
-    WHERE hp.anio >= 2026
+    WHERE hp.anio >= {ANIO}
 
 
 )
@@ -1685,9 +1685,9 @@ ORDER BY
     b.red,
     b.nombre_establecimiento;
 
- RAISE NOTICE 'Proceso IRAS_EDAS_2026 finalizado correctamente';
+ RAISE NOTICE 'Proceso IRAS_EDAS_{ANIO} finalizado correctamente';
 
 END;
 $$;
 
-CALL es_ivan.sp_generar_iras_edas_2026();
+CALL es_ivan.sp_generar_iras_edas_{ANIO}();

@@ -40,7 +40,7 @@ DROP TABLE IF EXISTS tmp_citas_validas;
 CREATE TEMP TABLE tmp_citas_validas AS
 SELECT DISTINCT id_cita
 FROM es_ivan.his_proceso
-WHERE anio = 2026
+WHERE anio = {ANIO}
 AND codigo_item IN (
     SELECT codigo
     FROM tmp_codigos_materno
@@ -68,7 +68,7 @@ WHERE 1=0;
 -- ============================================
 
 DELETE FROM es_ivan.tabla_materno
-WHERE anio = 2026;
+WHERE anio = {ANIO};
 
 -- ============================================
 -- INSERT FINAL
@@ -79,4 +79,4 @@ SELECT nt.*
 FROM es_ivan.his_proceso nt
 INNER JOIN tmp_citas_validas v
     ON nt.id_cita = v.id_cita
-WHERE nt.anio = 2026;
+WHERE nt.anio = {ANIO};

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +7,8 @@
 <link rel="stylesheet" href="/static/css/style.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 </head>
 <body>
 
@@ -19,6 +21,7 @@
   <button class="nav-btn" data-module="poblacion" id="btn-nav-poblacion">👥 Padrón/Población</button>
   <button class="nav-btn" data-module="mapa" id="btn-nav-mapa">🗺️ Geolocalización</button>
   <button class="nav-btn" data-module="dashboards" id="btn-nav-dashboards">📈 Dashboards</button>
+  <button class="nav-btn" data-module="reportes-minsa" id="btn-nav-reportes-minsa">📋 Formatos MINSA</button>
   <div class="nav-spacer"></div>
   <span class="nav-status" id="nav-status-access">⏳ Validando entorno...</span>
   <button class="theme-toggle" id="theme-toggle">🌙</button>
@@ -294,7 +297,6 @@
       </div>
     </div>
   </div>
-</div>
 
   <!-- ===== MODULE: PADRON / POBLACION ===== -->
   <div class="module" id="module-poblacion">
@@ -310,6 +312,12 @@
             <span class="status-dot warning"></span> <span id="pn-status-text">Verificando...</span>
           </div>
         </div>
+        <h3 style="margin-top:8px;font-size:12px;">Carpeta de archivos PN</h3>
+        <div style="display:flex;gap:4px;">
+          <input class="form-input" id="pn-ruta-carpeta" placeholder="Ruta de la carpeta con archivos PN..." style="flex:1;font-size:11px;" value="">
+          <button class="sidebar-btn" style="background:#555;color:#fff;width:auto;padding:4px 8px;font-size:11px;" onclick="pnExplorarCarpeta()">📂</button>
+        </div>
+        <div id="pn-ruta-info" style="font-size:10px;color:var(--text-muted);margin:2px 0 4px 0;"></div>
         <button class="sidebar-btn" style="background:#27AE60;color:#fff;" id="btn-pn-cargar" onclick="pnCargar()">📥 Cargar Padrón Nominal</button>
         <h3 style="margin-top:12px;">Buscar</h3>
         <input class="form-input" id="pn-busqueda" placeholder="Nombre, apellido o DNI madre..." onkeydown="if(event.key==='Enter')pnConsultar(1)">
@@ -326,6 +334,12 @@
             <span class="status-dot warning"></span> <span id="cnv-status-text">Verificando...</span>
           </div>
         </div>
+        <h3 style="margin-top:8px;font-size:12px;">Carpeta de archivos CNV</h3>
+        <div style="display:flex;gap:4px;">
+          <input class="form-input" id="cnv-ruta-carpeta" placeholder="Ruta de la carpeta con archivos CNV..." style="flex:1;font-size:11px;" value="">
+          <button class="sidebar-btn" style="background:#555;color:#fff;width:auto;padding:4px 8px;font-size:11px;" onclick="cnvExplorarCarpeta()">📂</button>
+        </div>
+        <div id="cnv-ruta-info" style="font-size:10px;color:var(--text-muted);margin:2px 0 4px 0;"></div>
         <button class="sidebar-btn" style="background:#27AE60;color:#fff;" id="btn-cnv-cargar" onclick="cnvCargar()">📥 Cargar CNV</button>
         <h3 style="margin-top:12px;">Buscar</h3>
         <input class="form-input" id="cnv-busqueda" placeholder="Nombre madre, DNI o NU_CNV..." onkeydown="if(event.key==='Enter')cnvConsultar(1)">
@@ -341,8 +355,8 @@
       <h2 style="font-size:18px;font-weight:bold;" id="pob-title">Padrón Nominal</h2>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" id="pn-total-info">Cargue datos para visualizar</div>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:none;" id="cnv-total-info">Cargue datos para visualizar</div>
-      <div class="results-viewer" id="pn-resultados" style="max-height:70vh;overflow-y:auto;"></div>
-      <div class="results-viewer" id="cnv-resultados" style="max-height:70vh;overflow-y:auto;display:none;"></div>
+      <div class="results-viewer" id="pn-resultados"></div>
+      <div class="results-viewer" id="cnv-resultados" style="display:none;"></div>
     </div>
   </div>
 
@@ -355,14 +369,24 @@
           <span class="status-dot" id="mapa-status-dot"></span> <span id="mapa-status-text">Verificando datos geo...</span>
         </div>
       </div>
+      <h3 style="margin-top:12px;">Establecimientos</h3>
+      <div id="mapa-eess" style="font-size:12px;max-height:120px;overflow-y:auto;"></div>
       <h3 style="margin-top:12px;">Pacientes por Distrito</h3>
-      <div id="mapa-distritos" style="font-size:12px;max-height:200px;overflow-y:auto;"></div>
+      <div id="mapa-distritos" style="font-size:12px;max-height:150px;overflow-y:auto;"></div>
       <h3 style="margin-top:12px;">Heatmap KDE</h3>
+      <select class="form-select" id="mapa-kde-filtro" style="font-size:11px;margin-bottom:4px;">
+        <option value="pn">Padrón Nominal</option>
+        <option value="iras">IRAS</option>
+        <option value="edas">EDAS</option>
+      </select>
+      <select class="form-select" id="mapa-kde-anio" style="font-size:11px;margin-bottom:4px;">
+        <option>2024</option><option>2025</option><option selected>2026</option>
+      </select>
       <button class="sidebar-btn" style="background:#E74C3C;color:#fff;" id="btn-mapa-kde" onclick="mapaKDE()">🔥 Generar KDE</button>
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="mapa-kde-info"></div>
     </div>
-    <div class="content-panel" style="padding:0;">
-      <div id="mapa-container" style="width:100%;height:80vh;"></div>
+    <div class="content-panel map-panel">
+      <div id="mapa-container" class="mapa-container"></div>
     </div>
   </div>
 
@@ -375,17 +399,75 @@
           <span class="status-dot" id="dash-status-dot"></span> <span id="dash-status-text">Cargando resumen...</span>
         </div>
       </div>
-      <h3 style="margin-top:12px;">Vistas</h3>
-      <button class="sidebar-btn" style="background:#2ECC71;color:#fff;" onclick="dashMostrar('resumen')" id="dash-btn-resumen">📊 Resumen General</button>
-      <button class="sidebar-btn" style="background:#3498DB;color:#fff;" onclick="dashMostrar('mapa')">🗺️ Mapa de Pacientes</button>
-    </div>
-    <div class="content-panel">
-      <h2 style="font-size:18px;font-weight:bold;">Resumen del Sistema</h2>
-      <div id="dash-contenido" style="padding:16px 0;">
-        <p style="color:var(--text-muted);">Cargando indicadores...</p>
+      <div class="dash-filters">
+        <h3 style="margin-top:8px;font-size:12px;">Filtros</h3>
+        <select class="form-select" id="dash-anio" onchange="dashRecargar()">
+          <option>2024</option><option>2025</option><option>2026</option>
+        </select>
+        <input class="form-input" id="dash-microred" placeholder="Microred..." style="font-size:11px;margin-top:4px;" oninput="dashRecargar()">
       </div>
+      <h3 style="margin-top:12px;">Reportes</h3>
+      <button class="sidebar-btn dash-btn" data-dash="resumen" style="background:#2ECC71;" onclick="dashCambiar('resumen')">📊 Resumen General</button>
+      <button class="sidebar-btn dash-btn" data-dash="iras-edas" style="background:#E74C3C;" onclick="dashCambiar('iras-edas')">🤒 IRAS/EDAS</button>
+      <button class="sidebar-btn dash-btn" data-dash="vacunacion" style="background:#3498DB;" onclick="dashCambiar('vacunacion')">💉 Vacunación</button>
+      <button class="sidebar-btn dash-btn" data-dash="cred" style="background:#F39C12;" onclick="dashCambiar('cred')">📏 CRED</button>
+      <button class="sidebar-btn dash-btn" data-dash="suplementacion" style="background:#9B59B6;" onclick="dashCambiar('suplementacion')">💊 DL1153</button>
+      <button class="sidebar-btn dash-btn" data-dash="materno" style="background:#E67E22;" onclick="dashCambiar('materno')">🤱 Materno</button>
+      <button class="sidebar-btn dash-btn" data-dash="poblacion" style="background:#1ABC9C;" onclick="dashCambiar('poblacion')">👥 Población</button>
+    </div>
+    <div class="content-panel dash-content">
+      <div class="dash-header">
+        <h2 id="dash-title" style="font-size:18px;font-weight:bold;">Resumen del Sistema</h2>
+        <div class="dash-header-info" id="dash-header-info"></div>
+      </div>
+      <div id="dash-contenido" class="dash-contenido"></div>
     </div>
   </div>
+
+  <!-- ===== MODULE: REPORTES EXCEL ===== -->
+  <div class="module" id="module-reportes-minsa">
+    <div class="sidebar" style="min-width:240px;">
+      <h2 style="font-size:16px;margin-bottom:8px;">📋 Formatos MINSA</h2>
+      <h3>Tipo de Reporte</h3>
+      <select class="form-select" id="rm-tipo" onchange="rmTipoChange()">
+        <option value="formato_nino_cred">FORMATO NIÑO - CRED (Completo)</option>
+        <option value="formato_iras_edas">FORMATO IRAS EDAS</option>
+      </select>
+      <h3>Año</h3>
+      <select class="form-select" id="rm-anio">
+        <option>2026</option>
+        <option>2025</option>
+        <option>2024</option>
+      </select>
+      <h3>Meses</h3>
+      <div id="rm-meses" style="display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:11px;margin-bottom:8px;">
+        <label><input type="checkbox" checked value="1"> Enero</label>
+        <label><input type="checkbox" checked value="2"> Febrero</label>
+        <label><input type="checkbox" checked value="3"> Marzo</label>
+        <label><input type="checkbox" checked value="4"> Abril</label>
+        <label><input type="checkbox" checked value="5"> Mayo</label>
+        <label><input type="checkbox" checked value="6"> Junio</label>
+        <label><input type="checkbox" checked value="7"> Julio</label>
+        <label><input type="checkbox" checked value="8"> Agosto</label>
+        <label><input type="checkbox" checked value="9"> Setiembre</label>
+        <label><input type="checkbox" checked value="10"> Octubre</label>
+        <label><input type="checkbox" checked value="11"> Noviembre</label>
+        <label><input type="checkbox" checked value="12"> Diciembre</label>
+      </div>
+      <h3>Filtros</h3>
+      <select class="form-select" id="rm-red"><option value="">-- Red (Todas) --</option></select>
+      <select class="form-select" id="rm-microred"><option value="">-- Microred (Todas) --</option></select>
+      <select class="form-select" id="rm-establecimiento"><option value="">-- Establecimiento (Todas) --</option></select>
+      <select class="form-select" id="rm-provincia"><option value="">-- Provincia (Todas) --</option></select>
+      <select class="form-select" id="rm-distrito"><option value="">-- Distrito (Todas) --</option></select>
+      <button class="sidebar-btn" style="background:#E67E22;color:#fff;font-size:14px;font-weight:bold;padding:10px;" id="rm-procesar" onclick="rmEjecutar()">▶ PROCESAR</button>
+      <button class="sidebar-btn" style="background:#27AE60;color:#fff;font-size:11px;" id="rm-exportar" onclick="rmExportar()" disabled>📥 Exportar a Excel</button>
+    </div>
+    <div class="content-panel" id="rm-resultado" style="overflow:auto;padding:16px;">
+      <p style="color:var(--text-muted);text-align:center;padding:40px;">Seleccione filtros y presione <b>PROCESAR</b> para generar el reporte</p>
+    </div>
+  </div>
+</div>
 
 <!-- ===== GLOBAL BOTTOM BAR ===== -->
 <div class="global-bar" id="global-bar">
@@ -538,6 +620,6 @@
 </div>
 
 <script src="/static/js/app.js"></script>
-<script src="/static/js/modules.js"></script>
+<script src="/static/js/modules.js?v=3"></script>
 </body>
 </html>

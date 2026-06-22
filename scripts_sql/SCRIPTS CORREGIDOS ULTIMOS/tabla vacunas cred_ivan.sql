@@ -84,7 +84,7 @@ DROP TABLE IF EXISTS tmp_citas_validas;
 CREATE TEMP TABLE tmp_citas_validas AS
 SELECT DISTINCT id_cita
 FROM es_ivan.his_proceso
-WHERE anio = 2025
+WHERE anio = {ANIO}
 AND codigo_item IN (
     SELECT codigo
     FROM tmp_codigos_vacunas
@@ -103,7 +103,7 @@ ANALYZE tmp_citas_validas;
 -- ============================================
 
 DELETE FROM es_ivan.tabla_vacunas
-WHERE anio = 2025;
+WHERE anio = {ANIO};
 
 -- ============================================
 -- INSERT FINAL
@@ -114,4 +114,4 @@ SELECT nt.*
 FROM es_ivan.his_proceso nt
 INNER JOIN tmp_citas_validas v
     ON nt.id_cita = v.id_cita
-WHERE nt.anio = 2025;
+WHERE nt.anio = {ANIO};

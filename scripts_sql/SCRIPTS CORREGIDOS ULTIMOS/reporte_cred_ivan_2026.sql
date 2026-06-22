@@ -1,15 +1,15 @@
-CREATE OR REPLACE PROCEDURE es_ivan.sp_generar_cred_2026()
+CREATE OR REPLACE PROCEDURE es_ivan.sp_generar_cred_{ANIO}()
 LANGUAGE plpgsql
 AS $$
 begin
 	
 	 -- 1️⃣ Eliminar tabla final si existe
-    DROP TABLE IF EXISTS es_ivan.cred2026;
+    DROP TABLE IF EXISTS es_ivan.cred{ANIO};
 
     -- 2️⃣ Eliminar tabla temporal si existe
 
 
-CREATE TABLE es_ivan.cred2026 AS
+CREATE TABLE es_ivan.cred{ANIO} AS
 
 -- ============================================
 -- 🔥 BASE MINIMA (SOLO LO NECESARIO)
@@ -45,7 +45,7 @@ WITH base AS (
     )::int AS edad_meses
 
     FROM es_ivan.tabla_vacunas
-    WHERE anio >= 2025
+    WHERE anio >= {ANIO_MENOS_1}
       
 ),
 ----CNV----- 
@@ -63,14 +63,14 @@ cnv AS (
 
     FROM es_ivan.cnv
     WHERE nu_cnv IS NOT NULL
-    GROUP BY anio, mes, ipress
+    GROUP BY periodo, ipress
 ),
 
 
 -- ============================================
 -- 🔥 SOLO FLAG NECESARIO (GESTANTE)
 -- ============================================
-cita_flags_2026 AS (
+cita_flags_{ANIO} AS (
    SELECT 
     id_cita,
 	
@@ -83,7 +83,7 @@ cita_flags_2026 AS (
 
 FROM es_ivan.tabla_materno b
 GROUP BY b.id_cita
-),  --select  * from cita_flags_2026
+),  --select  * from cita_flags_{ANIO}
 
 flags_cita AS (
 SELECT
@@ -685,7 +685,7 @@ SUM(CASE WHEN h.codigo_item='99199.27' AND h.valor_lab='VA2' AND h.edad_meses BE
 
 
 FROM base h
-LEFT JOIN cita_flags_2026 ci ON h.id_cita = ci.id_cita
+LEFT JOIN cita_flags_{ANIO} ci ON h.id_cita = ci.id_cita
 LEFT JOIN flags_cita f ON h.id_cita = f.id_cita
 LEFT JOIN cnv 
 ON (
@@ -1028,9 +1028,9 @@ FROM monitoreo_general m
 ORDER BY m.cod_2000, m.anio, m.mes;
 
 
-----generar tabla cred 2026 1
-    DROP TABLE IF EXISTS es_ivan.cred2026_1;
-	CREATE TABLE es_ivan.cred2026_1 AS
+----generar tabla cred {ANIO} 1
+    DROP TABLE IF EXISTS es_ivan.cred{ANIO}_1;
+	CREATE TABLE es_ivan.cred{ANIO}_1 AS
 
 -- ============================================
 -- 🔥 BASE MINIMA (SOLO LO NECESARIO)
@@ -1066,7 +1066,7 @@ WITH base AS (
     )::int AS edad_meses
 
     FROM es_ivan.tabla_vacunas
-    WHERE anio >= 2025
+    WHERE anio >= {ANIO_MENOS_1}
       /*AND codigo_item IN ('99199.26','99403','99403.01','99436','99381.01','99401.03','99411.01','99431','J00X','P599','J029','99381','99382','99383','C8002','Z001',
       						'99401.05','99401.07','99401.08','99401.09','99401.12','99401.16','99401.24','99401.25','99403.01','99401.03','P929','99211','99211','99199.17','R620','R628','E440',
       						'E669','E6690','E45X','E43X','E344','87177.01','B680','B681','B689','B700','B701','B760','B761','B8769','B779','B780','B79X','B820','B829','A070','A071','A06','B663','B664','87178',
@@ -1082,7 +1082,7 @@ WITH base AS (
 -- ============================================
 -- 🔥 SOLO FLAG NECESARIO (GESTANTE)
 -- ============================================ 
-cita_flags_2026 AS (
+cita_flags_{ANIO} AS (
    SELECT 
     id_cita,
 
@@ -1634,7 +1634,7 @@ SUM(CASE WHEN h.codigo_item='Z298' AND h.valor_lab='' and f.visit_domic_C0011=1 
 
 
 FROM base h
-LEFT JOIN cita_flags_2026 ci ON h.id_cita = ci.id_cita
+LEFT JOIN cita_flags_{ANIO} ci ON h.id_cita = ci.id_cita
 LEFT JOIN flags_cita f ON h.id_cita = f.id_cita
 
 GROUP BY 
@@ -1990,12 +1990,12 @@ ORDER BY m.cod_2000, m.anio, m.mes;
 --HABILITAR PARA COMLETAR REPORTE
 
 ---table hemoglobina 
-   DROP TABLE IF EXISTS es_ivan.cred2026_2;
+   DROP TABLE IF EXISTS es_ivan.cred{ANIO}_2;
 
     -- 2️⃣ Eliminar tabla temporal si existe
 
 
-CREATE TABLE es_ivan.cred2026_2 AS
+CREATE TABLE es_ivan.cred{ANIO}_2 AS
 
 -- ============================================
 -- 🔥 BASE MINIMA (SOLO LO NECESARIO)
@@ -2043,14 +2043,14 @@ WITH base AS (
 
     FROM es_ivan.tabla_vacunas
 
-    WHERE anio >= 2025
+    WHERE anio >= {ANIO_MENOS_1}
     
    ),
 
 -- ============================================
 -- 🔥 SOLO FLAG NECESARIO (GESTANTE)
 -- ============================================
-/* cita_flags_2026 AS (
+/* cita_flags_{ANIO} AS (
    SELECT 
     id_cita,dni_paciente,
 
@@ -2068,7 +2068,7 @@ WITH base AS (
   */  
     
    
-   cita_flags_2026 AS (
+   cita_flags_{ANIO} AS (
 
     SELECT 
     	b.anio,
@@ -2102,14 +2102,14 @@ WITH base AS (
     	b.anio,
         b.dni_paciente,
         b.condicion_gestante
-), --select  * from cita_flags_2026
+), --select  * from cita_flags_{ANIO}
 
     
 /*FROM es_ivan.tabla_materno b
 left join es_ivan.cnv c on b.dni_paciente=c.fe_nacido  
 GROUP BY b.id_cita,b.dni_paciente
 
-),--select  * from cita_flags_2026,*/
+),--select  * from cita_flags_{ANIO},*/
 
 /* =========================================
    FLAGS CLÍNICOS
@@ -2523,7 +2523,7 @@ hemoglobina AS (
 
     FROM base b
 
-    LEFT JOIN cita_flags_2026 m
+    LEFT JOIN cita_flags_{ANIO} m
            on b.dni_paciente = m.dni_paciente
 
     WHERE b.codigo_item IN ('85018','85018.01')
@@ -3027,7 +3027,7 @@ hb_gestante_primer AS (
 
         FROM hemoglobina h
 
-        INNER JOIN cita_flags_2026 cf  ON h.dni_paciente = cf.dni_paciente and h.anio=cf.anio
+        INNER JOIN cita_flags_{ANIO} cf  ON h.dni_paciente = cf.dni_paciente and h.anio=cf.anio
 
         WHERE cf.es_gestante = 1
 
@@ -3084,7 +3084,7 @@ hb_gestante_segundo AS (
 
         FROM hemoglobina h
 
-        INNER JOIN cita_flags_2026 cf ON h.dni_paciente = cf.dni_paciente  AND h.anio = cf.anio
+        INNER JOIN cita_flags_{ANIO} cf ON h.dni_paciente = cf.dni_paciente  AND h.anio = cf.anio
         INNER JOIN es_ivan.tabla_materno mat  ON h.dni_paciente = mat.dni_paciente and h.anio = mat.anio
 
         WHERE cf.es_gestante = 1
@@ -3143,7 +3143,7 @@ hb_gestante_tercero AS (
 
         FROM hemoglobina h
 
-        INNER JOIN cita_flags_2026 cf ON h.dni_paciente = cf.dni_paciente  AND h.anio = cf.anio
+        INNER JOIN cita_flags_{ANIO} cf ON h.dni_paciente = cf.dni_paciente  AND h.anio = cf.anio
         INNER JOIN es_ivan.tabla_materno mat  ON h.dni_paciente = mat.dni_paciente and h.anio = mat.anio
 
         WHERE cf.es_gestante = 1
@@ -3206,7 +3206,7 @@ hb_puerpera AS (
               AND LEFT(c.periodo::text, 4)::int = h.anio
               AND h.fecha_hb::date > c.fe_nacido::date
 
-        LEFT JOIN cita_flags_2026 cf
+        LEFT JOIN cita_flags_{ANIO} cf
                ON h.dni_paciente = cf.dni_paciente
               AND h.anio = cf.anio
 
@@ -3243,7 +3243,7 @@ hb_mef AS (
             ) AS rn
 
         FROM hemoglobina h
-        left join cita_flags_2026 g on h.dni_paciente=g.dni_paciente
+        left join cita_flags_{ANIO} g on h.dni_paciente=g.dni_paciente
 
         WHERE h.genero = 'F' and g.condicion_gestante=''
           AND h.edad_anios BETWEEN 18 AND 49
@@ -3565,12 +3565,12 @@ ORDER BY
 --- GENEREAR REPORTES PARA OCULAR MENTAL  
 
  
-   DROP TABLE IF EXISTS es_ivan.cred2026_3;
+   DROP TABLE IF EXISTS es_ivan.cred{ANIO}_3;
 
     -- 2️⃣ Eliminar tabla temporal si existe
 
 
-CREATE TABLE es_ivan.cred2026_3 AS
+CREATE TABLE es_ivan.cred{ANIO}_3 AS
 
 -- ============================================
 -- 🔥 BASE MINIMA (SOLO LO NECESARIO)
@@ -3606,7 +3606,7 @@ WITH base AS (
     )::int AS edad_meses
 
     FROM es_ivan.tabla_vacunas
-    WHERE anio >= 2025
+    WHERE anio >= {ANIO_MENOS_1}
       /*AND codigo_item IN ('99199.26','99403','99403.01','99436','99381.01','99401.03','99411.01','99431','J00X','P599','J029','99381','99382','99383','C8002','Z001',
       						'99401.05','99401.07','99401.08','99401.09','99401.12','99401.16','99401.24','99401.25','99403.01','99401.03','P929','99211','99211','99199.17','R620','R628','E440',
       						'E669','E6690','E45X','E43X','E344','87177.01','B680','B681','B689','B700','B701','B760','B761','B8769','B779','B780','B79X','B820','B829','A070','A071','A06','B663','B664','87178',
@@ -4528,12 +4528,12 @@ monitoreo_general AS (
 ---consejerias  niños 
 
 	 -- 1️⃣ Eliminar tabla final si existe
-    DROP TABLE IF EXISTS es_ivan.cred2026_4;
+    DROP TABLE IF EXISTS es_ivan.cred{ANIO}_4;
 
     -- 2️⃣ Eliminar tabla temporal si existe
 
 
-CREATE TABLE es_ivan.cred2026_4 AS
+CREATE TABLE es_ivan.cred{ANIO}_4 AS
 
 -- ============================================
 -- 🔥 BASE MINIMA (SOLO LO NECESARIO)
@@ -4569,7 +4569,7 @@ WITH base AS (
     )::int AS edad_meses
 
     FROM es_ivan.tabla_vacunas
-    WHERE anio >= 2025
+    WHERE anio >= {ANIO_MENOS_1}
      /*AND codigo_item IN ('99199.26','99403','99403.01','99436','99381.01','99401.03','99411.01','99431','J00X','P599','J029','99381','99382','99383','C8002','Z001',
       						'99401.05','99401.07','99401.08','99401.09','99401.12','99401.16','99401.24','99401.25','99403.01','99401.03','P929','99211','99211','99199.17','R620','R628','E440',
       						'E669','E6690','E45X','E43X','E344','87177.01','B680','B681','B689','B700','B701','B760','B761','B8769','B779','B780','B79X','B820','B829','A070','A071','A06','B663','B664','87178',
@@ -5145,12 +5145,12 @@ m.conse_lme_rn
 FROM monitoreo_general m
 ORDER BY m.cod_2000, m.anio, m.mes;
  
------REPORTE DE VACUNACION 2026 
+-----REPORTE DE VACUNACION {ANIO} 
 
 ----
 --generar tabla pai
-    DROP TABLE IF EXISTS es_ivan.pai_2026;
-	CREATE TABLE es_ivan.pai_2026 AS
+    DROP TABLE IF EXISTS es_ivan.pai_{ANIO};
+	CREATE TABLE es_ivan.pai_{ANIO} AS
 -- ============================================
 -- 🔥 BASE MINIMA (SOLO LO NECESARIO)
 -- ============================================
@@ -5186,7 +5186,7 @@ WITH base AS (
     )::int AS edad_meses
 
     FROM es_ivan.tabla_vacunas
-    WHERE anio >= 2025
+    WHERE anio >= {ANIO_MENOS_1}
       /* AND codigo_item IN ('90585','90633.01','90648','90649','90657','90658','90669','90670',
    							 '90681','90687','90688','90701','90702','90707','90712','90713','90714',
    							 '90715','90716','90717','90722','90723','90744','90746','Z238','Z2511','99199.26','99403','99403.01','99436','99381.01','99401.03','99411.01','99431','J00X','P599','J029','99381','99382','99383','C8002','Z001',
@@ -5204,7 +5204,7 @@ WITH base AS (
 -- ============================================
 -- 🔥 SOLO FLAG NECESARIO (GESTANTE)
 -- ============================================
-cita_flags_2026 AS (
+cita_flags_{ANIO} AS (
  SELECT 
     id_cita,
 
@@ -5669,7 +5669,7 @@ SUM(CASE WHEN ci.es_gestante = 1 AND h.codigo_item = '90715' AND h.valor_lab in(
 
 
 FROM base h
-LEFT JOIN cita_flags_2026 ci ON h.id_cita = ci.id_cita
+LEFT JOIN cita_flags_{ANIO} ci ON h.id_cita = ci.id_cita
 LEFT JOIN flags_cita f ON h.id_cita = f.id_cita
 
 GROUP BY 
@@ -5942,10 +5942,10 @@ FROM monitoreo_general m
 ORDER BY m.cod_2000, m.anio, m.mes;
 
 
-----GENERAR TABLA PAI_2026_2 
+----GENERAR TABLA PAI_{ANIO}_2 
 --generar tabla pai
-    DROP TABLE IF EXISTS es_ivan.pai_2026_1;
-	CREATE TABLE es_ivan.pai_2026_1 AS
+    DROP TABLE IF EXISTS es_ivan.pai_{ANIO}_1;
+	CREATE TABLE es_ivan.pai_{ANIO}_1 AS
 -- ============================================
 -- 🔥 BASE MINIMA (SOLO LO NECESARIO)
 -- ============================================
@@ -5981,7 +5981,7 @@ WITH base AS (
     )::int AS edad_meses
 
     FROM es_ivan.tabla_vacunas
-    WHERE anio >= 2025
+    WHERE anio >= {ANIO_MENOS_1}
       /*AND codigo_item IN ('90585','90633.01','90648','90649','90657','90658','90669','90670',
    							 '90681','90687','90688','90701','90702','90707','90712','90713','90714',
    							 '90715','90716','90717','90722','90723','90744','90746','Z238','Z2511','99199.26','99403','99403.01','99436','99381.01','99401.03','99411.01','99431','J00X','P599','J029','99381','99382','99383','C8002','Z001',
@@ -5999,7 +5999,7 @@ WITH base AS (
 -- ============================================
 -- 🔥 SOLO FLAG NECESARIO (GESTANTE)
 -- ============================================
-cita_flags_2026 AS (
+cita_flags_{ANIO} AS (
    SELECT 
     id_cita,
 
@@ -6142,7 +6142,7 @@ SUM(CASE WHEN h.genero = 'M' AND h.codigo_item = '90714' AND h.valor_lab IN ('3'
 
 
 FROM base h
-LEFT JOIN cita_flags_2026 ci ON h.id_cita = ci.id_cita
+LEFT JOIN cita_flags_{ANIO} ci ON h.id_cita = ci.id_cita
 LEFT JOIN flags_cita f ON h.id_cita = f.id_cita
 
 GROUP BY 
@@ -6223,4 +6223,4 @@ ORDER BY m.cod_2000, m.anio, m.mes;
 END;
 $$;
 
-CALL es_ivan.sp_generar_cred_2026();
+CALL es_ivan.sp_generar_cred_{ANIO}();

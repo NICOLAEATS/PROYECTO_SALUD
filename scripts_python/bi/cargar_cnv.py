@@ -10,13 +10,33 @@ cfg = get_db_config()
 ESQUEMA = cfg.schema or 'es_ivan'
 TABLA = 'cnv_cusco'
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-RUTA_PADRONES = PROJECT_ROOT / 'scripts_sql' / 'PADRONES'
+def _col_name(raw):
+    return raw.strip().lower()
 
-def detectar_csv():
-    for f in os.listdir(str(RUTA_PADRONES)):
+def _detect_encoding(path):
+    size = os.path.getsize(path)
+    samples = []
+    with open(path, 'rb') as f:
+        samples.append(f.read(65536))
+        if size > 131072:
+            f.seek(size // 2)
+            samples.append(f.read(65536))
+        if size > 262144:
+            f.seek(max(0, size - 65536))
+            samples.append(f.read(65536))
+    for enc in ('utf-8-sig', 'utf-8', 'cp1252', 'latin-1'):
+        try:
+            for s in samples:
+                s.decode(enc)
+            return enc
+        except UnicodeDecodeError:
+            continue
+    return 'cp1252'
+
+def detectar_csv(ruta_carpeta):
+    for f in os.listdir(str(ruta_carpeta)):
         if f.upper().startswith('CNV_') and f.lower().endswith('.csv'):
-            return RUTA_PADRONES / f
+            return ruta_carpeta / f
     return None
 
 def conectar():
@@ -25,13 +45,11 @@ def conectar():
         host=cfg.host, port=cfg.port
     )
 
-def _col_name(raw):
-    return raw.strip().lower()
-
 def crear_tabla(conn, cols):
     cur = conn.cursor()
+    cur.execute(f"DROP TABLE IF EXISTS {ESQUEMA}.{TABLA} CASCADE")
     col_defs = ', '.join(f'{_col_name(c)} TEXT' for c in cols)
-    sql = f"CREATE TABLE IF NOT EXISTS {ESQUEMA}.{TABLA} ({col_defs})"
+    sql = f"CREATE TABLE {ESQUEMA}.{TABLA} ({col_defs})"
     cur.execute(sql)
     conn.commit()
     cur.close()
@@ -48,10 +66,11 @@ def cargar_csv(conn, ruta_csv, cols_orig):
     def _sanitize(v):
         return v.replace('\x00', '') if v else v
 
+    encoding = _detect_encoding(ruta_csv)
     count = 0
     errores = 0
     batch = []
-    with open(str(ruta_csv), 'r', encoding='utf-8-sig') as f:
+    with open(str(ruta_csv), 'r', encoding=encoding) as f:
         reader = csv.DictReader(f, delimiter=',')
         for row in reader:
             try:
@@ -80,15 +99,23 @@ def cargar_csv(conn, ruta_csv, cols_orig):
     return count
 
 def main():
-    ruta_csv = detectar_csv()
+    if len(sys.argv) > 1 and sys.argv[1]:
+        ruta_carpeta = Path(sys.argv[1])
+    else:
+        PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+        ruta_carpeta = PROJECT_ROOT / 'scripts_sql' / 'PADRONES'
+
+    ruta_csv = detectar_csv(ruta_carpeta)
     if not ruta_csv:
-        print("[ERROR] No se encontró archivo CNV CSV en scripts_sql/PADRONES/")
+        print(f"[ERROR] No se encontró archivo CNV CSV en: {ruta_carpeta}")
         print("Buscar archivo que empiece con 'CNV_' y termine en '.csv'")
         return 1
 
     print(f"Archivo CNV detectado: {ruta_csv.name}")
 
-    with open(str(ruta_csv), 'r', encoding='utf-8-sig') as f:
+    encoding = _detect_encoding(ruta_csv)
+    print(f"Encoding detectado: {encoding}")
+    with open(str(ruta_csv), 'r', encoding=encoding) as f:
         reader = csv.reader(f, delimiter=',')
         cols_orig = next(reader)
 
